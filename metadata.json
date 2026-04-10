@@ -1,0 +1,5 @@
+{
+  "name": "Grafógrafo",
+  "description": "Panel administrativo para gestión de ventas, inventario y reportes profesionales con integración a Google Sheets.",
+  "requestFramePermissions": []
+}

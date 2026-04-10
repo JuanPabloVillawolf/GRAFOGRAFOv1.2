@@ -1,0 +1,641 @@
+import express from "express";
+import { createServer as createViteServer } from "vite";
+import path from "path";
+import { fileURLToPath } from "url";
+import { google } from "googleapis";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  app.use(express.json());
+
+  // Google OAuth Setup
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    `${process.env.APP_URL}/auth/callback`
+  );
+
+  // API Routes
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // 1. Get Google Auth URL
+  app.get("/api/auth/google/url", (req, res) => {
+    const scopes = [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file",
+    ];
+
+    const url = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      scope: scopes,
+      prompt: "consent",
+    });
+
+    res.json({ url });
+  });
+
+  // 2. OAuth Callback
+  app.get("/auth/callback", async (req, res) => {
+    const { code } = req.query;
+
+    try {
+      const { tokens } = await oauth2Client.getToken(code as string);
+      // In a real app, you'd store tokens in a session or DB.
+      // For this demo, we'll send them back to the client to store in localStorage (less secure but works for demo).
+      
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ 
+                  type: 'GOOGLE_AUTH_SUCCESS', 
+                  tokens: ${JSON.stringify(tokens)} 
+                }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+            <p>Autenticación exitosa. Esta ventana se cerrará automáticamente.</p>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error("Error exchanging code for tokens:", error);
+      res.status(500).send("Error en la autenticación");
+    }
+  });
+
+  // 3. Get Data from Google Sheets (Inventory and Sales)
+  app.post("/api/sheets/data", async (req, res) => {
+    const { tokens, spreadsheetId } = req.body;
+    if (!tokens || !spreadsheetId) {
+      return res.status(400).json({ error: "Tokens and Spreadsheet ID are required" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // Get spreadsheet info to check sheets
+      const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+      const sheetTitles = spreadsheet.data.sheets?.map(s => s.properties?.title || "") || [];
+
+      // Initialize missing sheets
+      const requiredSheets = [
+        { title: "Inventario", headers: ["ID", "Nombre", "Categoría", "Precio", "Stock", "Icono"] },
+        { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago"] },
+        { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas"] },
+        { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
+        { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
+        { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] }
+      ];
+
+      for (const reqSheet of requiredSheets) {
+        // Case-insensitive and trimmed check
+        const exists = sheetTitles.some(t => t.trim().toLowerCase() === reqSheet.title.toLowerCase());
+        
+        if (!exists) {
+          try {
+            await sheets.spreadsheets.batchUpdate({
+              spreadsheetId,
+              requestBody: {
+                requests: [{
+                  addSheet: { properties: { title: reqSheet.title, gridProperties: { frozenRowCount: 1 } } }
+                }]
+              }
+            });
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${reqSheet.title}!A1`,
+              valueInputOption: "RAW",
+              requestBody: { values: [reqSheet.headers] }
+            });
+          } catch (err: any) {
+            // If it failed because it was created in the meantime, just ignore
+            if (!err.message?.includes("already exists") && !err.message?.includes("Ya existe")) {
+              throw err;
+            }
+          }
+        }
+      }
+
+      // Fetch data
+      const [inventoryRes, salesRes, movementsRes, expensesRes, cashRes] = await Promise.all([
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:F" }),
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "Ventas!A2:H" }),
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "Movimientos!A2:G" }),
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "Gastos!A2:G" }),
+        sheets.spreadsheets.values.get({ spreadsheetId, range: "Caja!A2:E" })
+      ]);
+
+      const inventory = (inventoryRes.data.values || []).map((row, index) => ({
+        id: row[0] || `row-${index + 2}`,
+        name: row[1],
+        category: row[2],
+        price: parseFloat(row[3]) || 0,
+        stock: parseInt(row[4]) || 0,
+        icon: row[5]
+      }));
+
+      const sales = (salesRes.data.values || []).map(row => ({
+        id: row[0],
+        timestamp: row[1],
+        productName: row[2],
+        category: row[3],
+        quantity: parseInt(row[4]) || 0,
+        amount: parseFloat(row[6]) || 0,
+        paymentMethod: row[7] || "Efectivo"
+      })).reverse(); // Newest first
+
+      const movements = (movementsRes.data.values || []).map(row => ({
+        timestamp: row[0],
+        productId: row[1],
+        productName: row[2],
+        type: row[3],
+        quantity: parseInt(row[4]) || 0,
+        stockResult: parseInt(row[5]) || 0,
+        notes: row[6] || ""
+      })).reverse();
+
+      const expenses = (expensesRes.data.values || []).map(row => ({
+        id: row[0],
+        timestamp: row[1],
+        description: row[2],
+        amount: parseFloat(row[3]) || 0,
+        category: row[4],
+        username: row[5],
+        notes: row[6] || ""
+      })).reverse();
+
+      const cashLogs = (cashRes.data.values || []).map(row => ({
+        timestamp: row[0],
+        username: row[1],
+        type: row[2],
+        amount: parseFloat(row[3]) || 0,
+        notes: row[4] || ""
+      })).reverse();
+
+      res.json({ inventory, sales, movements, expenses, cashLogs });
+    } catch (error: any) {
+      console.error("Error fetching data from sheets:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 4. Login Validation
+  app.post("/api/auth/login", async (req, res) => {
+    const { tokens, spreadsheetId, username, password } = req.body;
+    if (!tokens || !spreadsheetId || !username || !password) {
+      return res.status(400).json({ error: "Faltan credenciales" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Usuarios!A2:D",
+      });
+
+      const rows = response.data.values || [];
+      const user = rows.find(row => row[0] === username && row[1] === password);
+
+      if (user) {
+        res.json({ 
+          success: true, 
+          user: { 
+            username: user[0], 
+            name: user[2], 
+            role: user[3] 
+          } 
+        });
+      } else {
+        // If no users exist yet, allow a default admin login for first time setup
+        if (rows.length === 0 && username === "admin" && password === "admin") {
+          // Auto-create admin in sheet
+          await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: "Usuarios!A1",
+            valueInputOption: "USER_ENTERED",
+            requestBody: {
+              values: [["admin", "admin", "Administrador", "admin"]]
+            }
+          });
+          return res.json({ 
+            success: true, 
+            user: { username: "admin", name: "Administrador", role: "admin" } 
+          });
+        }
+        res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 5. Cash Fund Management
+  app.post("/api/sheets/cash-fund", async (req, res) => {
+    const { tokens, spreadsheetId, amount, username, notes } = req.body;
+    if (!tokens || !spreadsheetId || amount === undefined || !username) {
+      return res.status(400).json({ error: "Faltan datos para el fondo de caja" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+      const now = new Date().toLocaleString('es-MX');
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Caja!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[now, username, "Fondo Inicial", amount, notes || "Apertura de caja"]]
+        }
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 6. Record an Expense
+  app.post("/api/sheets/expense", async (req, res) => {
+    const { tokens, spreadsheetId, expense } = req.body;
+    if (!tokens || !spreadsheetId || !expense) {
+      return res.status(400).json({ error: "Faltan datos para el gasto" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Gastos!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[
+            expense.id,
+            expense.timestamp,
+            expense.description,
+            expense.amount,
+            expense.category,
+            expense.username,
+            expense.notes
+          ]]
+        }
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 7. Record a Sale
+  app.post("/api/sheets/sale", async (req, res) => {
+    const { tokens, spreadsheetId, sale, productId } = req.body;
+    if (!tokens || !spreadsheetId || !sale) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // 1. Append to Ventas
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Ventas!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[
+            sale.id,
+            sale.timestamp,
+            sale.productName,
+            sale.category,
+            sale.quantity,
+            sale.amount / sale.quantity,
+            sale.amount,
+            sale.paymentMethod
+          ]]
+        }
+      });
+
+      // 2. Update Inventory Stock
+      const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
+      const inventoryRows = inventoryRes.data.values || [];
+      const rowIndex = inventoryRows.findIndex((row, idx) => {
+        const id = row[0] || `row-${idx + 2}`;
+        return id === productId;
+      });
+
+      if (rowIndex !== -1) {
+        const currentStock = parseInt(inventoryRows[rowIndex][4]) || 0;
+        const newStock = currentStock - sale.quantity;
+        
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `Inventario!E${rowIndex + 2}`,
+          valueInputOption: "RAW",
+          requestBody: { values: [[newStock]] }
+        });
+
+        // 3. Record Movement
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: "Movimientos!A1",
+          valueInputOption: "USER_ENTERED",
+          requestBody: {
+            values: [[
+              new Date().toLocaleString(),
+              productId,
+              sale.productName,
+              "Salida (Venta)",
+              -sale.quantity,
+              newStock,
+              `Venta ID: ${sale.id}`
+            ]]
+          }
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error recording sale:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 5. Update Stock
+  app.post("/api/sheets/inventory/update", async (req, res) => {
+    const { tokens, spreadsheetId, productId, adjustment, notes } = req.body;
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
+      const inventoryRows = inventoryRes.data.values || [];
+      const rowIndex = inventoryRows.findIndex((row, idx) => {
+        const id = row[0] || `row-${idx + 2}`;
+        return id === productId;
+      });
+
+      if (rowIndex !== -1) {
+        const currentStock = parseInt(inventoryRows[rowIndex][4]) || 0;
+        const newStock = currentStock + adjustment;
+        
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `Inventario!E${rowIndex + 2}`,
+          valueInputOption: "RAW",
+          requestBody: { values: [[newStock]] }
+        });
+
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: "Movimientos!A1",
+          valueInputOption: "USER_ENTERED",
+          requestBody: {
+            values: [[
+              new Date().toLocaleString(),
+              productId,
+              inventoryRows[rowIndex][1],
+              adjustment > 0 ? "Entrada" : "Ajuste/Salida",
+              adjustment,
+              newStock,
+              notes || ""
+            ]]
+          }
+        });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 6. Add Product
+  app.post("/api/sheets/inventory/add", async (req, res) => {
+    const { tokens, spreadsheetId, product } = req.body;
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Inventario!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[
+            product.id,
+            product.name,
+            product.category,
+            product.price,
+            product.stock,
+            product.icon
+          ]]
+        }
+      });
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Movimientos!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[
+            new Date().toLocaleString(),
+            product.id,
+            product.name,
+            "Alta de Producto",
+            product.stock,
+            product.stock,
+            "Registro inicial"
+          ]]
+        }
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 7. Export to Google Sheets (Original, kept for compatibility if needed)
+  app.post("/api/export-sheets", async (req, res) => {
+    const { tokens, updates, title, spreadsheetId: existingId } = req.body;
+
+    if (!tokens) {
+      return res.status(401).json({ error: "No tokens provided" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      let spreadsheetId = existingId;
+      let spreadsheetUrl = "";
+      let existingSheets: string[] = [];
+
+      if (!spreadsheetId) {
+        // Create a new spreadsheet if no ID provided
+        const spreadsheet = await sheets.spreadsheets.create({
+          requestBody: {
+            properties: {
+              title: title || `Reporte Grafógrafo - ${new Date().toLocaleDateString()}`,
+            },
+          },
+        });
+        spreadsheetId = spreadsheet.data.spreadsheetId;
+        spreadsheetUrl = spreadsheet.data.spreadsheetUrl || "";
+        existingSheets = spreadsheet.data.sheets?.map(s => s.properties?.title || "") || [];
+      } else {
+        // Get existing spreadsheet info
+        try {
+          const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+          spreadsheetUrl = spreadsheet.data.spreadsheetUrl || "";
+          existingSheets = spreadsheet.data.sheets?.map(s => s.properties?.title || "") || [];
+        } catch (err: any) {
+          if (err.code === 404) {
+            throw new Error("El ID de la hoja de cálculo no es válido o el archivo no existe.");
+          }
+          throw err;
+        }
+      }
+
+      // Process each update (one per sheet/category)
+      for (const update of updates) {
+        const { sheetName, values, append = true } = update;
+        
+        // If sheet doesn't exist, create it
+        if (!existingSheets.includes(sheetName)) {
+          try {
+            await sheets.spreadsheets.batchUpdate({
+              spreadsheetId: spreadsheetId!,
+              requestBody: {
+                requests: [{
+                  addSheet: {
+                    properties: { 
+                      title: sheetName,
+                      gridProperties: { frozenRowCount: 1 }
+                    }
+                  }
+                }]
+              }
+            });
+            existingSheets.push(sheetName);
+            
+            // Add headers for the new sheet
+            await sheets.spreadsheets.values.update({
+              spreadsheetId: spreadsheetId!,
+              range: `${sheetName}!A1`,
+              valueInputOption: "RAW",
+              requestBody: {
+                values: [["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total"]]
+              }
+            });
+
+            // Format headers (Bold, Background Color)
+            await sheets.spreadsheets.batchUpdate({
+              spreadsheetId: spreadsheetId!,
+              requestBody: {
+                requests: [
+                  {
+                    repeatCell: {
+                      range: {
+                        sheetId: (await sheets.spreadsheets.get({ spreadsheetId: spreadsheetId! })).data.sheets?.find(s => s.properties?.title === sheetName)?.properties?.sheetId,
+                        startRowIndex: 0,
+                        endRowIndex: 1
+                      },
+                      cell: {
+                        userEnteredFormat: {
+                          backgroundColor: { red: 0.1, green: 0.1, blue: 0.1 },
+                          textFormat: { 
+                            foregroundColor: { red: 1, green: 1, blue: 1 }, 
+                            bold: true 
+                          },
+                          horizontalAlignment: "CENTER"
+                        }
+                      },
+                      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
+                    }
+                  },
+                  {
+                    updateSheetProperties: {
+                      properties: {
+                        sheetId: (await sheets.spreadsheets.get({ spreadsheetId: spreadsheetId! })).data.sheets?.find(s => s.properties?.title === sheetName)?.properties?.sheetId,
+                        gridProperties: { frozenRowCount: 1 }
+                      },
+                      fields: "gridProperties.frozenRowCount"
+                    }
+                  }
+                ]
+              }
+            });
+          } catch (err) {
+            console.error(`Error creating/formatting sheet ${sheetName}:`, err);
+          }
+        }
+
+        const targetSheet = update.sheetName;
+        
+        if (append) {
+          await sheets.spreadsheets.values.append({
+            spreadsheetId: spreadsheetId!,
+            range: `${targetSheet}!A1`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values },
+          });
+        } else {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: spreadsheetId!,
+            range: `${targetSheet}!A1`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values },
+          });
+        }
+      }
+
+      res.json({ success: true, url: spreadsheetUrl });
+    } catch (error: any) {
+      console.error("Error exporting to sheets:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
