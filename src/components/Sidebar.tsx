@@ -31,7 +31,7 @@ export function Sidebar({ activeView, setActiveView, currentUser }: SidebarProps
   const sections = ['Operaciones', 'Registros'];
 
   return (
-    <aside className="w-[280px] min-w-[280px] max-w-[280px] min-h-screen bg-espresso flex flex-col shrink-0">
+    <aside className="w-[280px] min-w-[280px] max-w-[280px] h-screen sticky top-0 bg-espresso flex flex-col shrink-0 overflow-hidden">
       <div className="p-8 border-b border-white/10">
         <div className="font-serif text-3xl text-cream tracking-wide flex items-center gap-3">
           <Coffee size={28} className="text-gold" />
@@ -56,7 +56,7 @@ export function Sidebar({ activeView, setActiveView, currentUser }: SidebarProps
                     key={item.id}
                     onClick={() => setActiveView(item.id)}
                     className={cn(
-                      "w-full flex items-center justify-start text-left gap-4 px-8 py-4 text-[16px] transition-all border-l-4",
+                      "w-full flex items-center justify-start text-left gap-4 px-8 py-4 text-[16px] transition-colors border-l-4 h-[56px]",
                       activeView === item.id
                         ? "text-gold bg-gold/10 border-gold font-medium"
                         : "text-white/40 hover:text-cream hover:bg-white/5 border-transparent"

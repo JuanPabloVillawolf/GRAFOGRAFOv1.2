@@ -61,7 +61,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
           <span className="text-[10px] uppercase tracking-widest text-dust">{currentSales.length} items</span>
         </div>
         
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-auto">
           <table className="w-full text-left text-[13px]">
             <thead className="bg-cream/30 sticky top-0">
               <tr>

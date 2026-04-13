@@ -57,7 +57,7 @@ export function InventoryHistory({ movements }: InventoryHistoryProps) {
           <span className="text-[10px] uppercase tracking-widest text-dust">{currentMovements.length} movimientos</span>
         </div>
         
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-auto">
           <table className="w-full text-left text-[13px]">
             <thead className="bg-cream/30 sticky top-0">
               <tr>

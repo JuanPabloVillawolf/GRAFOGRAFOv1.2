@@ -22,7 +22,7 @@
     font-size: 18px;
   }
   body {
-    @apply bg-cream text-ink font-sans antialiased;
+    @apply bg-cream text-ink font-sans antialiased overflow-x-hidden;
   }
 }
 
