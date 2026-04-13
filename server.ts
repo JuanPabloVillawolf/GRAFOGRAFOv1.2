@@ -88,11 +88,6 @@ async function startServer() {
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
-      // Get spreadsheet info to check sheets
-      const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
-      const sheetTitles = spreadsheet.data.sheets?.map(s => s.properties?.title || "") || [];
-
-      // Initialize missing sheets
       const requiredSheets = [
         { title: "Inventario", headers: ["ID", "Nombre", "Categoría", "Precio", "Stock", "Icono"] },
         { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago"] },
@@ -103,46 +98,66 @@ async function startServer() {
         { title: "Cuentas", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)"] }
       ];
 
-      for (const reqSheet of requiredSheets) {
-        // Case-insensitive and trimmed check
-        const exists = sheetTitles.some(t => t.trim().toLowerCase() === reqSheet.title.toLowerCase());
-        
-        if (!exists) {
-          try {
-            await sheets.spreadsheets.batchUpdate({
-              spreadsheetId,
-              requestBody: {
-                requests: [{
-                  addSheet: { properties: { title: reqSheet.title, gridProperties: { frozenRowCount: 1 } } }
-                }]
+      // Try to fetch data first (saves 1 read request if sheets exist)
+      let batchRes;
+      try {
+        batchRes = await sheets.spreadsheets.values.batchGet({
+          spreadsheetId,
+          ranges: requiredSheets.map(s => `${s.title}!A2:H`)
+        });
+      } catch (err: any) {
+        // If sheets don't exist, initialize them
+        if (err.message?.includes("range") || err.message?.includes("not found") || err.code === 400) {
+          const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+          const sheetTitles = spreadsheet.data.sheets?.map(s => s.properties?.title || "") || [];
+
+          for (const reqSheet of requiredSheets) {
+            const exists = sheetTitles.some(t => t.trim().toLowerCase() === reqSheet.title.toLowerCase());
+            if (!exists) {
+              try {
+                await sheets.spreadsheets.batchUpdate({
+                  spreadsheetId,
+                  requestBody: {
+                    requests: [{
+                      addSheet: { properties: { title: reqSheet.title, gridProperties: { frozenRowCount: 1 } } }
+                    }]
+                  }
+                });
+                await sheets.spreadsheets.values.update({
+                  spreadsheetId,
+                  range: `${reqSheet.title}!A1`,
+                  valueInputOption: "RAW",
+                  requestBody: { values: [reqSheet.headers] }
+                });
+              } catch (initErr: any) {
+                if (!initErr.message?.includes("already exists")) throw initErr;
               }
-            });
-            await sheets.spreadsheets.values.update({
-              spreadsheetId,
-              range: `${reqSheet.title}!A1`,
-              valueInputOption: "RAW",
-              requestBody: { values: [reqSheet.headers] }
-            });
-          } catch (err: any) {
-            // If it failed because it was created in the meantime, just ignore
-            if (!err.message?.includes("already exists") && !err.message?.includes("Ya existe")) {
-              throw err;
             }
           }
+          // Retry fetch
+          batchRes = await sheets.spreadsheets.values.batchGet({
+            spreadsheetId,
+            ranges: requiredSheets.map(s => `${s.title}!A2:H`)
+          });
+        } else {
+          throw err;
         }
       }
 
-      // Fetch data
-      const [inventoryRes, salesRes, movementsRes, expensesRes, cashRes, pendingRes] = await Promise.all([
-        sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:F" }),
-        sheets.spreadsheets.values.get({ spreadsheetId, range: "Ventas!A2:H" }),
-        sheets.spreadsheets.values.get({ spreadsheetId, range: "Movimientos!A2:G" }),
-        sheets.spreadsheets.values.get({ spreadsheetId, range: "Gastos!A2:G" }),
-        sheets.spreadsheets.values.get({ spreadsheetId, range: "Caja!A2:E" }),
-        sheets.spreadsheets.values.get({ spreadsheetId, range: "Cuentas!A2:F" })
-      ]);
+      const valueRanges = batchRes.data.valueRanges || [];
+      
+      const getSheetValues = (title: string) => {
+        const vr = valueRanges.find(v => {
+          if (!v.range) return false;
+          // Extract sheet name from range string (e.g., "'Sheet Name'!A2:H" or "SheetName!A2:H")
+          const sheetPart = v.range.split('!')[0];
+          const normalizedSheetName = sheetPart.replace(/'/g, '');
+          return normalizedSheetName === title;
+        });
+        return vr?.values || [];
+      };
 
-      const inventory = (inventoryRes.data.values || []).map((row, index) => ({
+      const inventory = getSheetValues("Inventario").map((row, index) => ({
         id: row[0] || `row-${index + 2}`,
         name: row[1],
         category: row[2],
@@ -151,7 +166,7 @@ async function startServer() {
         icon: row[5]
       }));
 
-      const sales = (salesRes.data.values || []).map(row => ({
+      const sales = getSheetValues("Ventas").map(row => ({
         id: row[0],
         timestamp: row[1],
         productName: row[2],
@@ -161,7 +176,7 @@ async function startServer() {
         paymentMethod: row[7] || "Efectivo"
       })).reverse(); // Newest first
 
-      const movements = (movementsRes.data.values || []).map(row => ({
+      const movements = getSheetValues("Movimientos").map(row => ({
         timestamp: row[0],
         productId: row[1],
         productName: row[2],
@@ -171,7 +186,7 @@ async function startServer() {
         notes: row[6] || ""
       })).reverse();
 
-      const expenses = (expensesRes.data.values || []).map(row => ({
+      const expenses = getSheetValues("Gastos").map(row => ({
         id: row[0],
         timestamp: row[1],
         description: row[2],
@@ -181,7 +196,7 @@ async function startServer() {
         notes: row[6] || ""
       })).reverse();
 
-      const cashLogs = (cashRes.data.values || []).map(row => ({
+      const cashLogs = getSheetValues("Caja").map(row => ({
         timestamp: row[0],
         username: row[1],
         type: row[2],
@@ -189,7 +204,7 @@ async function startServer() {
         notes: row[4] || ""
       })).reverse();
 
-      const pendingAccounts = (pendingRes.data.values || []).map(row => {
+      const pendingAccounts = getSheetValues("Cuentas").map(row => {
         let items = [];
         let payments = [];
         try {

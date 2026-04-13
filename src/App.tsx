@@ -12,7 +12,7 @@ import { Expenses } from './components/Expenses';
 import { Sale, Product, Event, InventoryMovement, PendingAccount, Expense, CashLog } from './types';
 import { Settings, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from './lib/utils';
+import { cn, formatCurrency } from './lib/utils';
 
 const INITIAL_PRODUCTS: Product[] = [
   { id: '1', name: 'El Principito', category: 'Libros', price: 180, stock: 8, icon: 'book' },
@@ -54,6 +54,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [hasCashFund, setHasCashFund] = useState<boolean>(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
@@ -63,7 +64,8 @@ export default function App() {
       setCurrentUser(JSON.parse(savedUser));
       // Check if cash fund was already set for today
       const lastFundDate = localStorage.getItem('last_cash_fund_date');
-      const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const now = new Date();
+      const today = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
       if (lastFundDate === today) {
         setHasCashFund(true);
       }
@@ -90,7 +92,8 @@ export default function App() {
       const data = await response.json();
       if (data.success) {
         setHasCashFund(true);
-        const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const now = new Date();
+        const today = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
         localStorage.setItem('last_cash_fund_date', today);
       } else {
         alert('Error al registrar fondo de caja: ' + data.error);
@@ -127,6 +130,7 @@ export default function App() {
       if (data.success) {
         setCurrentUser(data.user);
         localStorage.setItem('pos_user', JSON.stringify(data.user));
+        fetchData(googleTokens, templateId); // Fetch data immediately to check for cash fund
       } else {
         setLoginError(data.error || 'Error de autenticación');
       }
@@ -187,13 +191,22 @@ export default function App() {
       if (data.cashLogs) {
         setCashLogs(data.cashLogs);
         // Check if there's a "Fondo Inicial" for today in the server data
-        const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const hasTodayFund = data.cashLogs.some((log: CashLog) => 
-          log.type === "Fondo Inicial" && log.timestamp.includes(today)
-        );
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        const todayStr = `${day}/${month}/${year}`;
+        
+        const hasTodayFund = data.cashLogs.some((log: CashLog) => {
+          if (log.type !== "Fondo Inicial") return false;
+          // Match formats like "13/04/2026", "13/4/2026", "2026-04-13" etc.
+          return log.timestamp.includes(todayStr) || 
+                 log.timestamp.includes(`${now.getDate()}/${now.getMonth() + 1}/${year}`);
+        });
+
         if (hasTodayFund) {
           setHasCashFund(true);
-          localStorage.setItem('last_cash_fund_date', today);
+          localStorage.setItem('last_cash_fund_date', todayStr);
         }
       }
     } catch (error) {
@@ -203,6 +216,7 @@ export default function App() {
       }
     } finally {
       if (!silent) setIsLoading(false);
+      setIsDataLoaded(true);
     }
   };
 
@@ -271,7 +285,7 @@ export default function App() {
       // Only poll if the user is not actively interacting with a modal or checkout
       // to avoid UI jumps, but generally safe for silent updates
       fetchData(googleTokens, templateId, true);
-    }, 15000); // Poll every 15 seconds
+    }, 30000); // Poll every 30 seconds (increased from 15s to save quota)
 
     return () => clearInterval(interval);
   }, [googleTokens, templateId, currentUser, activePendingAccount]);
@@ -431,7 +445,9 @@ export default function App() {
         // For simplicity, we'll just record all items with the first payment method of this session
         // or a combined description if multiple methods were used.
         
-        const paymentMethodDesc = sessionPayments.map(p => p.method).join(' + ');
+        const paymentMethodDesc = sessionPayments
+          .map(p => `${p.method}: ${formatCurrency(p.amount)}`)
+          .join(' + ');
 
         for (const item of account.items) {
           const newSale: Sale = {
@@ -717,6 +733,8 @@ export default function App() {
   }
 
   if (!hasCashFund) {
+    // If we are still loading data, don't show the modal yet
+    if (!isDataLoaded || isLoading) return null;
     return <CashFundModal onConfirm={handleCashFundConfirm} isLoading={isLoading} />;
   }
 

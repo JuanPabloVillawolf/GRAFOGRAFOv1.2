@@ -42,10 +42,58 @@ export function Dashboard({ sales, products, expenses }: DashboardProps) {
   const booksSold = todaySales.filter(s => s.category === 'Libros').length;
   const lowStockAlerts = products.filter(p => p.stock < 5).length;
 
+  const normalizeMethod = (method: string) => {
+    const m = method.toLowerCase();
+    if (m.includes('efectivo')) return 'Efectivo';
+    if (m.includes('tarjeta')) return 'Tarjeta';
+    if (m.includes('transferencia')) return 'Transferencia';
+    if (m.includes('pendiente')) return 'Pendiente';
+    if (m.includes('gratis')) return 'Gratis';
+    return method.charAt(0).toUpperCase() + method.slice(1);
+  };
+
   // Payment methods breakdown
   const paymentMethods = todaySales.reduce((acc, sale) => {
-    const method = sale.paymentMethod || 'Efectivo';
-    acc[method] = (acc[method] || 0) + sale.amount;
+    const methodStr = sale.paymentMethod || 'Efectivo';
+    
+    // Check if it's a split payment string: "Method: $120.00 + Method: $30.00"
+    if (methodStr.includes(' + ') && methodStr.includes(': $')) {
+      const parts = methodStr.split(' + ');
+      
+      // Calculate total in the string to get proportions
+      let totalInString = 0;
+      const parsedParts = parts.map(part => {
+        const colonIndex = part.indexOf(':');
+        if (colonIndex !== -1) {
+          const method = part.substring(0, colonIndex).trim();
+          const amountStr = part.substring(colonIndex + 1).trim();
+          const amount = parseFloat(amountStr.replace(/[^0-9.]/g, '') || '0');
+          totalInString += amount;
+          return { method, amount };
+        }
+        return { method: part.trim(), amount: 0 };
+      });
+
+      // Distribute sale.amount based on proportions
+      parsedParts.forEach(part => {
+        const proportion = totalInString > 0 ? part.amount / totalInString : 0;
+        const distributedAmount = sale.amount * proportion;
+        const normalizedMethod = normalizeMethod(part.method);
+        acc[normalizedMethod] = (acc[normalizedMethod] || 0) + distributedAmount;
+      });
+    } else {
+      // Single method, but might have ": $amount" suffix
+      let method = methodStr;
+      let amount = sale.amount;
+
+      if (methodStr.includes(':')) {
+        const colonIndex = methodStr.indexOf(':');
+        method = methodStr.substring(0, colonIndex).trim();
+      }
+
+      const normalizedMethod = normalizeMethod(method);
+      acc[normalizedMethod] = (acc[normalizedMethod] || 0) + amount;
+    }
     return acc;
   }, {} as Record<string, number>);
 
