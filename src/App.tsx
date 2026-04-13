@@ -37,6 +37,8 @@ export default function App() {
   const [pendingAccounts, setPendingAccounts] = useState<PendingAccount[]>([]);
   const [activePendingAccount, setActivePendingAccount] = useState<PendingAccount | null>(null);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Keep active account in sync with the list
   useEffect(() => {
     if (activePendingAccount) {
@@ -61,7 +63,7 @@ export default function App() {
       setCurrentUser(JSON.parse(savedUser));
       // Check if cash fund was already set for today
       const lastFundDate = localStorage.getItem('last_cash_fund_date');
-      const today = new Date().toLocaleDateString();
+      const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
       if (lastFundDate === today) {
         setHasCashFund(true);
       }
@@ -88,7 +90,8 @@ export default function App() {
       const data = await response.json();
       if (data.success) {
         setHasCashFund(true);
-        localStorage.setItem('last_cash_fund_date', new Date().toLocaleDateString());
+        const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        localStorage.setItem('last_cash_fund_date', today);
       } else {
         alert('Error al registrar fondo de caja: ' + data.error);
       }
@@ -172,7 +175,19 @@ export default function App() {
       if (data.sales) setSales(data.sales);
       if (data.movements) setMovements(data.movements);
       if (data.expenses) setExpenses(data.expenses);
-      if (data.cashLogs) setCashLogs(data.cashLogs);
+      if (data.pendingAccounts) setPendingAccounts(data.pendingAccounts);
+      if (data.cashLogs) {
+        setCashLogs(data.cashLogs);
+        // Check if there's a "Fondo Inicial" for today in the server data
+        const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const hasTodayFund = data.cashLogs.some((log: CashLog) => 
+          log.type === "Fondo Inicial" && log.timestamp.includes(today)
+        );
+        if (hasTodayFund) {
+          setHasCashFund(true);
+          localStorage.setItem('last_cash_fund_date', today);
+        }
+      }
     } catch (error) {
       console.error('Network error fetching data:', error);
       alert('Error de red al intentar conectar con Google Sheets.');
@@ -211,6 +226,32 @@ export default function App() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  useEffect(() => {
+    const syncPendingAccounts = async () => {
+      if (!googleTokens || !templateId || isAuthChecking || isLoading) return;
+      
+      try {
+        await fetch('/api/sheets/pending-accounts/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            tokens: googleTokens, 
+            spreadsheetId: templateId, 
+            accounts: pendingAccounts 
+          }),
+        });
+      } catch (error) {
+        console.error('Error syncing pending accounts:', error);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      syncPendingAccounts();
+    }, 2000); // 2 second debounce
+
+    return () => clearTimeout(timer);
+  }, [pendingAccounts]);
 
   const handleAddSale = async (product: Product, quantity: number = 1, paymentMethod: string = 'Efectivo', totalAmount?: number, providedCustomerName?: string) => {
     if (!googleTokens || !templateId) {
@@ -657,23 +698,54 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-cream">
-      <Sidebar activeView={activeView} setActiveView={setActiveView} currentUser={currentUser} />
+    <div className="flex min-h-screen bg-cream overflow-x-hidden">
+      <Sidebar 
+        activeView={activeView} 
+        setActiveView={(view) => {
+          setActiveView(view);
+          setIsSidebarOpen(false);
+        }} 
+        currentUser={currentUser}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
       
-      <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <header className="bg-cream px-8 py-5 flex items-center justify-between border-b border-mist sticky top-0 z-10">
-          <div>
-            <h1 className="font-serif text-2xl text-espresso">
-              {activeView === 'dashboard' ? 'Pero primero un cafe ... ☕' : 
-               activeView === 'ventas' ? 'Registro de Ventas' : 
-               activeView === 'gastos' ? 'Control de Gastos' : 
-               activeView === 'registros' ? 'Registros de Ventas' : 
-               activeView === 'registros_inventario' ? 'Registros de Inventario' : 'Inventario'}
-            </h1>
-            <p className="text-xs text-dust mt-1">Resumen operativo del día · Tijuana, B.C.</p>
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+      
+      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
+        <header className="bg-cream px-4 lg:px-8 py-4 lg:py-5 flex items-center justify-between border-b border-mist sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-espresso hover:bg-mist/20 rounded-lg transition-colors"
+            >
+              <Settings size={24} />
+            </button>
+            <div>
+              <h1 className="font-serif text-lg lg:text-2xl text-espresso truncate max-w-[200px] lg:max-w-none">
+                {activeView === 'dashboard' ? 'Pero primero un cafe ... ☕' : 
+                 activeView === 'ventas' ? 'Registro de Ventas' : 
+                 activeView === 'gastos' ? 'Control de Gastos' : 
+                 activeView === 'registros' ? 'Registros de Ventas' : 
+                 activeView === 'registros_inventario' ? 'Registros de Inventario' : 
+                 activeView === 'cuentas' ? 'Cuentas Abiertas' : 'Inventario'}
+              </h1>
+              <p className="hidden sm:block text-[10px] lg:text-xs text-dust mt-0.5 lg:mt-1">Resumen operativo del día · Tijuana, B.C.</p>
+            </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 lg:gap-3">
             <button 
               onClick={() => fetchData()}
               disabled={isLoading || !googleTokens || !templateId}
@@ -691,14 +763,15 @@ export default function App() {
             </button>
             <button 
               onClick={handleLogout}
-              className="px-4 py-2 text-xs font-medium border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              className="px-3 lg:px-4 py-1.5 lg:py-2 text-[10px] lg:text-xs font-medium border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
             >
-              Cerrar Sesión
+              <span className="hidden sm:inline">Cerrar Sesión</span>
+              <span className="sm:hidden">Salir</span>
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-8 relative">
+        <div className="flex-1 overflow-auto p-4 lg:p-8 relative">
           {isLoading && (
             <div className="absolute inset-0 z-20 bg-cream/50 backdrop-blur-[2px] flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">

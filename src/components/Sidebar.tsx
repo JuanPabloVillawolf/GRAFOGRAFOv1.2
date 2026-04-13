@@ -6,9 +6,11 @@ interface SidebarProps {
   activeView: string;
   setActiveView: (view: string) => void;
   currentUser: any;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function Sidebar({ activeView, setActiveView, currentUser }: SidebarProps) {
+export function Sidebar({ activeView, setActiveView, currentUser, isOpen, onClose }: SidebarProps) {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -31,8 +33,17 @@ export function Sidebar({ activeView, setActiveView, currentUser }: SidebarProps
   const sections = ['Operaciones', 'Registros'];
 
   return (
-    <aside className="w-[280px] min-w-[280px] max-w-[280px] h-screen sticky top-0 bg-espresso flex flex-col shrink-0 overflow-hidden">
-      <div className="p-8 border-b border-white/10">
+    <aside className={cn(
+      "fixed lg:static inset-y-0 left-0 z-50 w-[280px] bg-espresso flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 shrink-0",
+      isOpen ? "translate-x-0" : "-translate-x-full"
+    )}>
+      <div className="p-8 border-b border-white/10 relative">
+        <button 
+          onClick={onClose}
+          className="lg:hidden absolute right-4 top-4 text-dust hover:text-cream"
+        >
+          <ArrowDownCircle className="rotate-90" size={24} />
+        </button>
         <div className="font-serif text-3xl text-cream tracking-wide flex items-center gap-3">
           <Coffee size={28} className="text-gold" />
           Grafógrafo

@@ -37,6 +37,7 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
   const [payments, setPayments] = useState<{ method: string, amount: number }[]>([]);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   const cartTotal = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -247,7 +248,7 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
       {/* Cart and Products Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-dust" size={18} />
               <input 
@@ -418,18 +419,30 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
         </div>
 
         {/* Shopping Cart Sidebar */}
-        <div className="bg-white border border-parchment rounded-2xl flex flex-col h-fit sticky top-24 max-h-[calc(100vh-120px)] shadow-xl shadow-espresso/5">
-          <div className="p-5 border-b border-mist flex items-center justify-between">
+        <div className={cn(
+          "bg-white border border-parchment rounded-2xl flex flex-col h-fit lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] shadow-xl shadow-espresso/5 transition-all duration-300",
+          "fixed inset-x-4 bottom-4 z-40 lg:static lg:inset-auto lg:z-auto",
+          showMobileCart ? "translate-y-0" : "translate-y-[calc(100%+20px)] lg:translate-y-0"
+        )}>
+          <div className="p-4 lg:p-5 border-b border-mist flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShoppingCart size={20} className="text-bark" />
               <h3 className="font-serif text-lg text-espresso">Carrito</h3>
             </div>
-            <span className="bg-gold/20 text-espresso text-[10px] font-bold px-2 py-1 rounded-full">
-              {cart.reduce((sum, item) => sum + item.quantity, 0)} items
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bg-gold/20 text-espresso text-[10px] font-bold px-2 py-1 rounded-full">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)} items
+              </span>
+              <button 
+                onClick={() => setShowMobileCart(false)}
+                className="lg:hidden p-1 text-dust hover:text-espresso"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[150px] max-h-[40vh] lg:max-h-none">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-dust py-10 opacity-50">
                 <ShoppingCart size={40} strokeWidth={1} />
@@ -497,6 +510,27 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
           </div>
         </div>
       </div>
+
+      {/* Mobile Cart Toggle */}
+      <AnimatePresence>
+        {cart.length > 0 && !showMobileCart && (
+          <motion.button
+            initial={{ scale: 0, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0, y: 20 }}
+            onClick={() => setShowMobileCart(true)}
+            className="lg:hidden fixed bottom-6 right-6 z-40 bg-espresso text-cream p-4 rounded-full shadow-2xl flex items-center gap-2"
+          >
+            <div className="relative">
+              <ShoppingCart size={24} />
+              <span className="absolute -top-2 -right-2 bg-gold text-espresso text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-espresso">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            </div>
+            <span className="font-bold text-sm pr-2">{formatCurrency(cartTotal)}</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Custom Item Modal */}
       <AnimatePresence>
