@@ -179,8 +179,10 @@ export default function App() {
       if (data.expenses) setExpenses(data.expenses);
       if (data.pendingAccounts) {
         // Only update pending accounts if we are not currently editing one
-        // or if the update comes from another device
-        setPendingAccounts(data.pendingAccounts);
+        // to avoid losing local changes during a poll
+        if (!activePendingAccount) {
+          setPendingAccounts(data.pendingAccounts);
+        }
       }
       if (data.cashLogs) {
         setCashLogs(data.cashLogs);
@@ -256,7 +258,7 @@ export default function App() {
 
     const timer = setTimeout(() => {
       syncPendingAccounts();
-    }, 2000); // 2 second debounce
+    }, 500); // 500ms debounce for faster sync
 
     return () => clearTimeout(timer);
   }, [pendingAccounts]);
@@ -272,7 +274,7 @@ export default function App() {
     }, 15000); // Poll every 15 seconds
 
     return () => clearInterval(interval);
-  }, [googleTokens, templateId, currentUser]);
+  }, [googleTokens, templateId, currentUser, activePendingAccount]);
 
   const handleAddSale = async (product: Product, quantity: number = 1, paymentMethod: string = 'Efectivo', totalAmount?: number, providedCustomerName?: string) => {
     if (!googleTokens || !templateId) {
