@@ -43,12 +43,11 @@ export function Dashboard({ sales, products, expenses }: DashboardProps) {
   const lowStockAlerts = products.filter(p => p.stock < 5).length;
 
   // Payment methods breakdown
-  const cashTotal = todaySales
-    .filter(s => s.paymentMethod.toLowerCase().includes('efectivo'))
-    .reduce((acc, s) => acc + s.amount, 0);
-  const cardTotal = todaySales
-    .filter(s => s.paymentMethod.toLowerCase().includes('tarjeta'))
-    .reduce((acc, s) => acc + s.amount, 0);
+  const paymentMethods = todaySales.reduce((acc, sale) => {
+    const method = sale.paymentMethod || 'Efectivo';
+    acc[method] = (acc[method] || 0) + sale.amount;
+    return acc;
+  }, {} as Record<string, number>);
 
   // Top products
   const productSales = todaySales.reduce((acc, sale) => {
@@ -61,9 +60,9 @@ export function Dashboard({ sales, products, expenses }: DashboardProps) {
     .slice(0, 3);
 
   const metrics = [
-    { label: 'Ingresos hoy', value: formatCurrency(totalIncome), change: 'Entradas brutas', icon: TrendingUp, color: 'gold' },
+    { label: 'Ingresos hoy', value: formatCurrency(totalIncome), change: 'Entradas totales', icon: TrendingUp, color: 'gold' },
     { label: 'Gastos hoy', value: formatCurrency(totalOutflow), change: 'Salidas registradas', icon: ArrowDownCircle, color: 'terra' },
-    { label: 'Balance Neto', value: formatCurrency(netBalance), change: 'Efectivo real', icon: Wallet, color: 'sage' },
+    { label: 'Balance Neto', value: formatCurrency(netBalance), change: 'Utilidad del día', icon: Wallet, color: 'sage' },
     { label: 'Alertas Stock', value: lowStockAlerts, change: 'Revisar inventario', icon: AlertTriangle, color: 'bark' },
   ];
 
@@ -168,23 +167,18 @@ export function Dashboard({ sales, products, expenses }: DashboardProps) {
               <h3 className="font-serif text-base text-espresso">Métodos de Pago</h3>
             </div>
             <div className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-dust">
-                  <Wallet size={14} />
-                  Efectivo
+              {Object.entries(paymentMethods).sort(([, a], [, b]) => b - a).map(([method, total]) => (
+                <div key={method} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-dust">
+                    {method.toLowerCase().includes('tarjeta') ? <CreditCard size={14} /> : <Wallet size={14} />}
+                    {method}
+                  </div>
+                  <div className="font-serif text-espresso font-semibold">{formatCurrency(total)}</div>
                 </div>
-                <div className="font-serif text-espresso font-semibold">{formatCurrency(cashTotal)}</div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-dust">
-                  <CreditCard size={14} />
-                  Tarjeta
-                </div>
-                <div className="font-serif text-espresso font-semibold">{formatCurrency(cardTotal)}</div>
-              </div>
+              ))}
               <div className="pt-2 border-t border-parchment flex items-center justify-between text-[12px] uppercase tracking-widest text-dust">
                 <span>Total Hoy</span>
-                <span>{formatCurrency(cashTotal + cardTotal)}</span>
+                <span>{formatCurrency(totalIncome)}</span>
               </div>
             </div>
           </div>

@@ -152,13 +152,13 @@ export default function App() {
     }
   };
 
-  const fetchData = async (tokensToUse?: any, idToUse?: string) => {
+  const fetchData = async (tokensToUse?: any, idToUse?: string, silent: boolean = false) => {
     const tokens = tokensToUse || googleTokens;
     const spreadsheetId = idToUse || templateId;
 
     if (!tokens || !spreadsheetId) return;
 
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     try {
       const response = await fetch('/api/sheets/data', {
         method: 'POST',
@@ -167,15 +167,21 @@ export default function App() {
       });
       const data = await response.json();
       if (data.error) {
-        console.error('Server error fetching data:', data.error);
-        alert('Error al conectar con la hoja: ' + data.error);
+        if (!silent) {
+          console.error('Server error fetching data:', data.error);
+          alert('Error al conectar con la hoja: ' + data.error);
+        }
         return;
       }
       if (data.inventory) setProducts(data.inventory);
       if (data.sales) setSales(data.sales);
       if (data.movements) setMovements(data.movements);
       if (data.expenses) setExpenses(data.expenses);
-      if (data.pendingAccounts) setPendingAccounts(data.pendingAccounts);
+      if (data.pendingAccounts) {
+        // Only update pending accounts if we are not currently editing one
+        // or if the update comes from another device
+        setPendingAccounts(data.pendingAccounts);
+      }
       if (data.cashLogs) {
         setCashLogs(data.cashLogs);
         // Check if there's a "Fondo Inicial" for today in the server data
@@ -189,10 +195,12 @@ export default function App() {
         }
       }
     } catch (error) {
-      console.error('Network error fetching data:', error);
-      alert('Error de red al intentar conectar con Google Sheets.');
+      if (!silent) {
+        console.error('Network error fetching data:', error);
+        alert('Error de red al intentar conectar con Google Sheets.');
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -252,6 +260,19 @@ export default function App() {
 
     return () => clearTimeout(timer);
   }, [pendingAccounts]);
+
+  // Polling for background updates
+  useEffect(() => {
+    if (!googleTokens || !templateId || !currentUser) return;
+
+    const interval = setInterval(() => {
+      // Only poll if the user is not actively interacting with a modal or checkout
+      // to avoid UI jumps, but generally safe for silent updates
+      fetchData(googleTokens, templateId, true);
+    }, 15000); // Poll every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [googleTokens, templateId, currentUser]);
 
   const handleAddSale = async (product: Product, quantity: number = 1, paymentMethod: string = 'Efectivo', totalAmount?: number, providedCustomerName?: string) => {
     if (!googleTokens || !templateId) {
@@ -813,6 +834,9 @@ export default function App() {
               }}
               onDeleteAccount={(id) => setPendingAccounts(pendingAccounts.filter(a => a.id !== id))}
               onPayAccount={handlePayPendingAccount}
+              onUpdateAccount={(updatedAcc) => {
+                setPendingAccounts(prev => prev.map(a => a.id === updatedAcc.id ? updatedAcc : a));
+              }}
             />
           )}
           {activeView === 'registros' && (

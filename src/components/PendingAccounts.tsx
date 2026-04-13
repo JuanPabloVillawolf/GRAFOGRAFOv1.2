@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PendingAccount } from '../types';
-import { formatCurrency } from '../lib/utils';
-import { Users, Clock, ChevronRight, Trash2, CreditCard } from 'lucide-react';
+import { formatCurrency, cn } from '../lib/utils';
+import { Users, Clock, ChevronRight, Trash2, CreditCard, Edit2, Plus, Minus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface PendingAccountsProps {
@@ -9,14 +9,52 @@ interface PendingAccountsProps {
   onSelectAccount: (account: PendingAccount) => void;
   onDeleteAccount: (accountId: string) => void;
   onPayAccount: (account: PendingAccount, payments: { method: string, amount: number }[]) => void;
+  onUpdateAccount: (account: PendingAccount) => void;
 }
 
-export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, onPayAccount }: PendingAccountsProps) {
+export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, onPayAccount, onUpdateAccount }: PendingAccountsProps) {
   const [payingAccountId, setPayingAccountId] = useState<string | null>(null);
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [currentPayments, setCurrentPayments] = useState<{ method: string, amount: number }[]>([]);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
 
   const paymentMethods = ['Efectivo', 'Tarjeta', 'Transferencia', 'Gratis', 'Otro'];
+
+  const handleUpdateItemQuantity = (account: PendingAccount, itemIndex: number, delta: number) => {
+    const newItems = [...account.items];
+    const newQuantity = Math.max(0, newItems[itemIndex].quantity + delta);
+    
+    if (newQuantity === 0) {
+      newItems.splice(itemIndex, 1);
+    } else {
+      newItems[itemIndex] = { ...newItems[itemIndex], quantity: newQuantity };
+    }
+
+    if (newItems.length === 0) {
+      onDeleteAccount(account.id);
+    } else {
+      onUpdateAccount({
+        ...account,
+        items: newItems,
+        updatedAt: new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+      });
+    }
+  };
+
+  const handleRemoveItem = (account: PendingAccount, itemIndex: number) => {
+    const newItems = [...account.items];
+    newItems.splice(itemIndex, 1);
+
+    if (newItems.length === 0) {
+      onDeleteAccount(account.id);
+    } else {
+      onUpdateAccount({
+        ...account,
+        items: newItems,
+        updatedAt: new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+      });
+    }
+  };
 
   const handleStartPay = (account: PendingAccount) => {
     setPayingAccountId(account.id);
@@ -98,22 +136,67 @@ export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, on
                       </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => onDeleteAccount(account.id)}
-                    className="p-2 text-dust hover:text-red-500 transition-colors"
-                    title="Eliminar cuenta"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => editingAccountId === account.id ? setEditingAccountId(null) : setEditingAccountId(account.id)}
+                      className={cn(
+                        "p-2 rounded-full transition-colors",
+                        editingAccountId === account.id ? "bg-espresso text-cream" : "text-dust hover:text-espresso hover:bg-parchment"
+                      )}
+                      title="Editar productos"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => onDeleteAccount(account.id)}
+                      className="p-2 text-dust hover:text-red-500 transition-colors"
+                      title="Eliminar cuenta"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <div className="text-[10px] font-bold text-dust uppercase tracking-wider">Productos ({account.items.reduce((sum, item) => sum + item.quantity, 0)})</div>
-                  <div className="max-h-24 overflow-y-auto space-y-1 pr-2">
+                  <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
                     {account.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-[11px] text-ink">
-                        <span>{item.quantity}x {item.productName}</span>
-                        <span className="text-dust">{formatCurrency(item.price * item.quantity)}</span>
+                      <div key={idx} className="flex justify-between items-center text-[11px] text-ink group/item">
+                        <div className="flex items-center gap-2">
+                          {editingAccountId === account.id && (
+                            <div className="flex items-center gap-1 bg-parchment rounded-lg p-0.5">
+                              <button 
+                                onClick={() => handleUpdateItemQuantity(account, idx, -1)}
+                                className="p-0.5 hover:bg-white rounded text-dust"
+                              >
+                                <Minus size={10} />
+                              </button>
+                              <span className="w-4 text-center font-bold">{item.quantity}</span>
+                              <button 
+                                onClick={() => handleUpdateItemQuantity(account, idx, 1)}
+                                className="p-0.5 hover:bg-white rounded text-dust"
+                              >
+                                <Plus size={10} />
+                              </button>
+                            </div>
+                          )}
+                          {!editingAccountId || editingAccountId !== account.id ? (
+                            <span>{item.quantity}x {item.productName}</span>
+                          ) : (
+                            <span className="font-medium">{item.productName}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-dust">{formatCurrency(item.price * item.quantity)}</span>
+                          {editingAccountId === account.id && (
+                            <button 
+                              onClick={() => handleRemoveItem(account, idx)}
+                              className="text-red-400 hover:text-red-600 p-1"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
