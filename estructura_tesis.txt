@@ -1,0 +1,718 @@
+<!-- Pega aquí la estructura y el contenido de tu tesis -->
+Parte 1.- DEFINICIÓN DEL PROYECTO Y PROBLEMA A VISUALIZAR- 28 de Febrero
+1. TÍTULO DEL PROYECTO
+1.1 Estructura obligatoria
+●	Máximo 20 palabras
+●	Debe incluir visualización / dashboard
+●	Debe indicar qué se visualiza y dónde
+1.2 Redacción base 
+Propuesta de dashboard para la visualización de [tipo de información] en [tipo de organización o proceso]
+Ejemplos válidos:
+●	Propuesta de dashboard para la visualización de indicadores de ventas en una empresa comercial
+●	Propuesta de dashboard para la visualización de información académica en una institución educativa
+1.3 Preguntas guía (NO se responden en el texto)
+●	¿Qué información concreta voy a visualizar?
+●	¿En qué contexto (empresa, área, proceso)?
+●	¿Para apoyar qué tipo de decisiones?
+CITAS REQUERIDAS:  Ninguna (el título no se cita)
+ 
+2. RESUMEN (200–250 palabras)
+2.1 Estructura obligatoria (en este orden)
+1.	Contexto general (datos, información, decisiones)
+2.	Problema (falta de visualización)
+3.	Objetivo del proyecto
+4.	Solución propuesta (dashboard)
+5.	Utilidad o impacto esperado
+2.2 Redacción base guiada
+En la actualidad, las organizaciones generan grandes volúmenes de datos que requieren ser analizados de manera eficiente para apoyar la toma de decisiones. Sin embargo, la falta de herramientas adecuadas para la visualización de la información dificulta la interpretación de los datos y limita su aprovechamiento estratégico (citar autor sobre visualización o toma de decisiones).
+En este contexto, el presente proyecto tiene como objetivo diseñar una propuesta de dashboard para la visualización de [tipo de información], aplicada a [organización o proceso], con el fin de facilitar el análisis de la información y apoyar la toma de decisiones. El proyecto se desarrolla bajo un enfoque aplicado, integrando conceptos de visualización de datos, indicadores clave de desempeño y proyectos de innovación (citar definición de dashboard o BI).
+Como resultado esperado, se plantea un dashboard funcional que permita presentar información clara, resumida y relevante, contribuyendo a mejorar el análisis y la eficiencia en la toma de decisiones.
+2.3 Preguntas guía ESPECÍFICAS para buscar y citar
+El alumno DEBE buscar respuestas académicas a:
+●	¿Por qué la visualización de datos es importante para la toma de decisiones?
+●	¿Qué problemas existen cuando los datos no se visualizan adecuadamente?
+●	¿Qué es un dashboard y para qué se utiliza en las organizaciones?
+2.4 Mínimo de citas obligatorias
+ MÍNIMO 2 CITAS ACADÉMICAS
+●	1 sobre visualización de datos o toma de decisiones
+●	1 sobre dashboard o Business Intelligence
+
+ 
+3. INTRODUCCIÓN
+3.1 Estructura obligatoria
+●	3 a 5 párrafos
+●	De lo general a lo particular
+●	Termina presentando el proyecto
+
+3.2 Redacción base guiada
+En un entorno organizacional cada vez más orientado al uso de datos, la capacidad para transformar información en conocimiento útil se ha convertido en un factor clave para la competitividad. No obstante, el crecimiento en la cantidad de datos disponibles no siempre se traduce en una mejor toma de decisiones, especialmente cuando la información no se presenta de forma clara y comprensible (citar autor sobre datos e información).
+La visualización de información surge como una estrategia que permite sintetizar datos complejos y facilitar su análisis mediante representaciones gráficas. Entre las herramientas más utilizadas para este fin se encuentran los dashboards, los cuales integran indicadores clave y permiten monitorear el desempeño de procesos u organizaciones (citar definición de dashboard).
+En este sentido, el presente proyecto propone el diseño de un dashboard enfocado en la visualización de [tipo de información], aplicado a [organización o proceso], como una solución innovadora que contribuya a mejorar la interpretación de los datos y fortalecer la toma de decisiones.
+3.3 Preguntas guía ESPECÍFICAS para buscar y citar
+●	¿Cuál es la diferencia entre datos, información y conocimiento?
+●	¿Qué papel juega la visualización en la toma de decisiones?
+●	¿Cómo apoyan los dashboards el análisis organizacional?
+3.4 Mínimo de citas obligatorias
+MÍNIMO 3 CITAS
+●	1 sobre datos vs información
+●	1 sobre visualización de datos
+●	1 sobre dashboard
+ 
+CAPÍTULO I. GENERALIDADES DEL PROYECTO
+
+1.1 Antecedentes
+1.1.1 Estructura obligatoria
+●	Antecedentes generales (literatura)
+●	Antecedentes del contexto elegido
+●	Cierre conectando con el proyecto
+1.1.2 Redacción base guiada
+Diversos autores señalan que la visualización de datos permite mejorar la comprensión de la información y apoyar la toma de decisiones en las organizaciones (citar). En particular, los dashboards se han consolidado como herramientas clave dentro de la inteligencia de negocios, al integrar indicadores relevantes en una sola interfaz visual (citar).
+En distintos sectores, la implementación de dashboards ha permitido optimizar procesos, reducir tiempos de análisis y mejorar la eficiencia organizacional (citar estudios o casos). No obstante, muchas organizaciones aún presentan limitaciones en la forma en que gestionan y presentan su información.
+En el caso de [organización o proceso], la información se gestiona actualmente mediante [describir cómo], lo que genera dificultades para el análisis oportuno y la toma de decisiones fundamentadas.
+1.1.3 Preguntas guía ESPECÍFICAS para buscar y citar
+●	¿Qué es un dashboard según distintos autores?
+●	¿Qué beneficios reporta el uso de dashboards?
+●	¿En qué áreas o sectores se utilizan dashboards?
+●	¿Qué problemas se presentan sin visualización?
+1.1.4 Mínimo de citas obligatorias
+ MÍNIMO 4 CITAS
+●	2 sobre dashboard / BI
+●	1 sobre visualización de datos
+●	1 sobre beneficios organizacionales
+1.2 Planteamiento del Problema
+1.2.1 Estructura obligatoria
+●	Situación actual
+●	Problema central
+●	Consecuencias
+1.2.2 Redacción base guiada
+Actualmente, [organización o proceso] no cuenta con una herramienta que permita visualizar de forma integrada la información necesaria para la toma de decisiones. La información se encuentra dispersa en diferentes reportes o formatos, lo que dificulta su análisis y limita la identificación de patrones y tendencias relevantes.
+Problema central: la ausencia de un dashboard que integre y visualice información clave limita la toma de decisiones oportunas y fundamentadas.
+1.2.3 Preguntas guía (pueden no citarse)
+●	¿Qué información no se visualiza claramente?
+●	¿Qué decisiones se ven afectadas?
+●	¿Qué consecuencias genera el problema?
+ CITAS: opcionales (0–1)
+1.3 Pregunta de Investigación (ESTÁNDAR)
+¿Cómo puede el diseño de un dashboard contribuir a mejorar la visualización de información y la toma de decisiones en una organización?
+ CITAS: no aplica
+1.4 Objetivo General (ESTÁNDAR)
+Desarrollar /Diseñar una propuesta de dashboard para la visualización de información relevante que apoye la toma de decisiones en una organización.
+📌 CITAS: no aplica
+1.5 Objetivos Específicos
+Redacción base (se permite ajustar):
+●	Identificar la información clave que requiere ser visualizada.
+●	Definir indicadores relevantes.
+●	Desarrollar/Diseñar la estructura general del dashboard.
+●	Analizar su utilidad para la toma de decisiones.
+ CITAS: no aplica
+1.6 Justificación
+1.6.1 Redacción base guiada
+La realización de este proyecto se justifica por la necesidad de contar con herramientas que permitan mejorar la visualización de la información y fortalecer la toma de decisiones en las organizaciones. Diversos autores señalan que el uso de dashboards contribuye a reducir el tiempo de análisis y a mejorar la comprensión de los datos (citar).
+Desde el ámbito académico, el proyecto permite aplicar conocimientos de innovación, visualización de datos e inteligencia de negocios, fortaleciendo las competencias profesionales del estudiante.
+1.6.2 Preguntas guía ESPECÍFICAS para buscar y citar
+●	¿Por qué los dashboards mejoran la toma de decisiones?
+●	¿Qué beneficios aportan a las organizaciones?
+●	¿Cómo se relacionan con la innovación?
+1.6.3 Mínimo de citas obligatorias
+ MÍNIMO 2 CITAS
+●	1 sobre beneficios de dashboards
+●	1 sobre innovación o toma de decisiones
+
+ 
+ RÚBRICA · PARTE 1 (10 PUNTOS)
+Criterio	Puntos
+Título claro y contextualizado	1
+Resumen completo y con citas	2
+Introducción bien fundamentada	2
+Antecedentes con sustento teórico	2
+Problema claramente definido	1
+Pregunta y objetivos alineados	1
+Justificación con citas	1
+TOTAL	10
+ 
+PARTE 2 · ETAPA 2 (10%) 27 de Marzo
+CAPÍTULO II. REVISIÓN LITERARIA 
+Objetivo: sustentar con literatura qué es visualización/dashboards/KPIs y por qué sirven para decisiones.
+2.1 Visualización de información
+Estructura
+●	Definición
+●	Propósito en análisis
+●	Principios básicos (claridad, simplicidad, comparación)
+Redacción base (completar)
+La visualización de información se define como ________ (citar definición). Su propósito es facilitar la comprensión de datos mediante representaciones gráficas que permiten identificar patrones y tendencias (citar). En contextos organizacionales, la visualización reduce la complejidad del análisis y apoya la toma de decisiones al presentar información clave de forma rápida y comprensible (citar).
+En este proyecto, se adoptan principios básicos de visualización como ________ (p. ej., claridad, jerarquía visual, consistencia, comparación), los cuales guían la selección de gráficos y el diseño del dashboard (citar principios de diseño/visualización).
+Qué buscar para citar (preguntas de búsqueda)
+●	“definición de visualización de datos” (autor académico o libro)
+●	“principios de visualización efectiva” (claridad, simplicidad, evitar sobrecarga)
+●	“visualización y toma de decisiones” (evidencia)
+ Mínimo de citas obligatorias: 4
+●	1 definición
+●	1 utilidad/beneficio
+●	1 relación con decisiones
+●	1 principios de diseño
+2.2 Dashboard: concepto, tipos y componentes
+Estructura
+●	Definición
+●	Tipos (estratégico/táctico/operativo)
+●	Componentes (KPIs, gráficos, filtros, tablas)
+●	Buenas prácticas
+Redacción base (completar)
+Un dashboard es ________ (citar definición). Su utilidad principal es integrar indicadores clave y facilitar el monitoreo del desempeño para apoyar decisiones ________ (citar).
+La literatura clasifica los dashboards en ________ (estratégicos, tácticos y operativos), diferenciándolos por nivel de decisión, periodicidad y tipo de usuario (citar clasificación).
+Los componentes típicos de un dashboard incluyen ________ (tarjetas KPI, gráficos, tablas, segmentadores), y su efectividad depende de presentar información relevante sin saturación visual (citar buenas prácticas).
+Qué buscar para citar
+●	definición de dashboard (libro/artículo)
+●	tipos de dashboard (estratégico/táctico/operativo)
+●	buenas prácticas de dashboards (diseño, “at-a-glance”, consistencia)
+
+ Mínimo de citas obligatorias: 4
+2.3 KPI: definición y selección
+Estructura
+●	Definición KPI
+●	Criterios de selección (alineación, medibilidad, relevancia)
+●	Ficha técnica del KPI
+Redacción base
+Los KPI se definen como ________ (citar). Para que un KPI sea útil debe cumplir criterios como ________ (alineación a objetivos, disponibilidad de datos, claridad y periodicidad) (citar).
+En este proyecto, cada KPI se documenta mediante una ficha técnica que incluye: nombre, definición, fórmula, fuente, periodicidad, responsable y decisión que apoya.
+Qué buscar
+●	definición KPI
+●	criterios para seleccionar KPIs
+●	KPI vs métricas (diferencias)
+ Mínimo de citas obligatorias: 3
+2.4 Dashboards y toma de decisiones (evidencia)
+Estructura
+●	relación dashboard→mejor decisión
+●	beneficios reportados (tiempo, consistencia, transparencia)
+●	limitaciones (calidad de datos, sesgos, capacitación)
+
+Redacción base
+Estudios previos reportan que los dashboards mejoran la toma de decisiones al proporcionar información ________ (oportuna/consistente/accionable) (citar 2 fuentes). No obstante, la literatura también advierte limitaciones como ________ (calidad de datos, resistencia al cambio, interpretación) (citar 1 fuente).
+Qué buscar
+●	“dashboards decision making empirical study”
+●	“benefits of business intelligence dashboards”
+●	“data quality and decision making dashboards”
+ Mínimo de citas obligatorias: 3
+ Mínimo total Capítulo II: 14 citas (recomendado 16–18)
+
+ 
+CAPÍTULO III. METODOLOGÍA
+Objetivo: explicar cómo se hizo el proyecto y cómo se construyó el dashboard, paso a paso.
+3.1 Tipo de proyecto y alcance
+Redacción base
+Este trabajo corresponde a un proyecto aplicado, orientado a resolver una necesidad real de visualización de información en ________. El alcance del dashboard incluye ________ (áreas/indicadores/periodo) y excluye ________ (integraciones avanzadas, automatización total, etc.).
+ Citas obligatorias: 1–2 
+definición de proyecto aplicado o enfoque descriptivo
+
+Qué buscar
+●	“proyecto aplicado definición”
+●	“estudio descriptivo definición”
+
+3.2 Datos: fuente, preparación y calidad (paso a paso)
+Estructura paso a paso (lo que el alumno debe describir)
+1.	Fuente de datos
+○	¿De dónde salen los datos? (ERP, Excel, registros, encuesta, etc.)
+2.	Diccionario de datos
+○	Variables, tipo, rango, categorías
+3.	Limpieza
+○	duplicados, faltantes, formatos, outliers simples
+
+4.	Estructura tabular
+○	tabla “hechos” y tablas “catálogo” si aplica
+5.	Validación
+○	cruces, totales, coherencia
+
+Redacción base
+Los datos provienen de ________. Se construyó un diccionario de variables con ________. Posteriormente se realizó limpieza de datos mediante ________ (eliminar duplicados, homologar fechas, tratar faltantes). Finalmente, se validó la consistencia revisando ________ (totales por periodo, conteos por categoría, rangos).
+ Citas obligatorias: 0–1 (opcional)
+ (Solo si quieren citar “calidad de datos”)
+Qué buscar
+●	“data cleaning steps”
+●	“data quality dimensions” (si se quiere citar)
+3.3 Metodología para desarrollar el dashboard (elige UNA de estas 3)
+tres propuestas completas.
+ OPCIÓN A: METODOLOGÍA EN CASCADA (Waterfall)
+3.3.A.1 ¿Qué es y por qué se eligió? (citar)
+Se eligió un enfoque en cascada porque permite definir requisitos completos desde el inicio y avanzar por fases secuenciales, lo cual es conveniente cuando los indicadores y el alcance están claramente definidos (citar definición de cascada/waterfall).
+ Citas obligatorias: 2
+●	1 definición de cascada
+●	1 ventaja/limitación o comparación con ágil
+
+3.3.A.2 Paso a paso (fases y entregables)
+Fase 1. Levantamiento de requerimientos
+●	Usuarios del dashboard (quién decide)
+●	Lista final de KPIs (8–12)
+●	Reglas de negocio
+Fase 2. Diseño del dashboard
+●	boceto (wireframe) de pantallas
+●	layout (zonas: KPIs, gráficos, filtros)
+Fase 3. Preparación de datos
+●	limpieza, tablas, diccionario
+●	estructura de “tabla base”
+Fase 4. Construcción
+●	tablas dinámicas / medidas
+●	gráficos
+●	segmentadores
+
+Fase 5. Pruebas y validación
+●	revisión con el usuario (verificación KPI)
+●	pruebas de filtros y consistencia
+
+Fase 6. Documentación
+●	manual breve: cómo usarlo y qué significa cada KPI
+
+Redacción base para pegar (resumida pero completa)
+El desarrollo del dashboard se organizó en un enfoque secuencial: (1) levantamiento de requerimientos, (2) diseño, (3) preparación de datos, (4) construcción, (5) pruebas y (6) documentación. En la fase 1 se definieron ________. En la fase 2 se diseñó ________. En la fase 3 se realizó ________. En la fase 4 se construyó ________. En la fase 5 se validó ________. Finalmente, en la fase 6 se documentó ________.
+✅ OPCIÓN B: SCRUM (Ágil por Sprints)
+3.3.B.1 ¿Qué es y por qué se eligió? (citar)
+Se eligió Scrum debido a su enfoque iterativo e incremental, que permite construir el dashboard por entregas parciales y mejorar con retroalimentación continua (citar Scrum Guide o fuente académica).
+📌 Citas obligatorias: 2
+●	1 definición Scrum
+●	1 por qué es útil en proyectos tecnológicos/BI
+
+3.3.B.2 Roles (adaptados al curso)
+●	Product Owner: ________ (quien define KPIs)
+●	Scrum Master: ________ (quien organiza)
+●	Equipo: ________ (quien desarrolla)
+3.3.B.3 Sprints sugeridos (PASO A PASO)
+Sprint 0 (Planeación)
+●	backlog de KPIs
+●	definición de alcance y datos
+●	prototipo de layout
+
+Sprint 1 (MVP del dashboard)
+●	3 KPIs + 2 gráficos + filtros básicos
+●	hoja de datos limpia
+
+Sprint 2 (Dashboard completo)
+●	KPIs restantes
+●	gráficos clave
+●	segmentadores por categoría/periodo
+
+Sprint 3 (Validación y mejora)
+●	revisión con usuario
+●	corrección de inconsistencias
+●	hoja de “interpretación”
+
+Redacción base
+El proyecto se organizó en sprints. En el Sprint 0 se definió el backlog y el prototipo. En el Sprint 1 se desarrolló un MVP con ________. En el Sprint 2 se integraron ________. En el Sprint 3 se validó ________ y se incorporaron mejoras.
+________________________________________
+✅ OPCIÓN C: DESIGN THINKING (centrado en el usuario)
+3.3.C.1 ¿Qué es y por qué se eligió? (citar)
+Se eligió Design Thinking porque permite diseñar una solución centrada en el usuario, asegurando que el dashboard responda a necesidades reales de información y decisión (citar definición).
+ Citas obligatorias: 2
+●	1 definición Design Thinking
+●	1 sobre enfoque centrado en usuario (UX/servicios)
+3.3.C.2 Fases y paso a paso
+1) Empatizar
+●	entrevistas cortas a usuarios: “¿qué necesitas ver?”
+●	decisiones típicas
+2) Definir
+●	problema: “no puedo ver ______”
+●	necesidades: “necesito monitorear ______”
+3) Idear
+●	KPIs candidatos
+●	bocetos de visualización (2 propuestas)
+4) Prototipar
+●	prototipo en Excel (pantalla principal + filtros)
+5) Evaluar
+●	prueba con usuario (feedback)
+●	ajustes
+Redacción base
+El dashboard se desarrolló con enfoque centrado en el usuario. En Empatizar se identificaron ________. En Definir se formuló el problema como ________. En Idear se propusieron KPIs y visualizaciones como ________. En Prototipar se construyó ________. En Evaluar se obtuvo retroalimentación y se ajustó ________.
+3.4 Diseño del dashboard (común para cualquier metodología)
+3.4.1 Estructura mínima obligatoria del dashboard
+●	Hoja Datos (tabla base)
+●	Hoja Diccionario
+●	Hoja Tablas dinámicas / Cálculos
+●	Hoja Dashboard
+●	Hoja Interpretación (decisiones)
+3.4.2 Visualizaciones mínimas
+●	4 gráficos mínimo (barra, línea, comparativo, distribución)
+●	8–12 KPIs (tarjetas o indicadores numéricos)
+●	2–3 segmentadores (por ejemplo: periodo, categoría, sucursal/área)
+
+ Citas obligatorias: 1
+●	sobre principios de diseño/claridad del dashboard
+Qué buscar
+●	“principles of dashboard design”
+●	“effective data visualization principles”
+
+
+RÚBRICA · PARTE 2 (10 puntos)
+Criterio	Puntos
+Capítulo II completo (visualización, dashboard, KPI, decisiones)	3
+Citas APA correctas (mínimo requerido)	2
+Metodología elegida bien justificada y citada	2
+Paso a paso del desarrollo del dashboard claramente descrito	2
+Coherencia entre KPIs, problema y dashboard	1
+TOTAL	10
+ 
+PARTE 3 · ETAPA 3 (10%)
+Propósito de la Parte 3:Demostrar cómo se construyó el dashboard, qué contiene, cómo funciona y qué información empieza a revelar, sin llegar aún a conclusiones finales.
+CAPÍTULO IV. DESARROLLO DEL DASHBOARD
+
+4.1 Preparación Final de los Datos
+Estructura del apartado
+●	Confirmación de fuentes
+●	Ajustes finales
+●	Validación
+Redacción base guiada
+Para el desarrollo del dashboard se utilizaron los datos provenientes de [fuente de datos], correspondientes al periodo [indicar periodo]. Antes de su visualización, se realizó una revisión final de la base de datos con el fin de asegurar la consistencia de la información.
+Entre las acciones realizadas se incluyen la verificación de formatos, la revisión de valores faltantes y la validación de totales y categorías, con el objetivo de garantizar que los indicadores calculados reflejen correctamente la información disponible.
+Preguntas guía (deben reflejarse en el texto)
+●	¿Qué base de datos final se utilizó?
+●	¿Qué periodo cubren los datos?
+●	¿Qué validaciones se realizaron?
+ CITAS: no obligatorias (0)
+
+4.2 Estructura del Dashboard
+Estructura del apartado
+●	Organización por hojas o secciones
+●	Descripción general
+
+Redacción base guiada
+El dashboard se estructuró en distintas secciones con el propósito de facilitar la navegación y el análisis de la información. En primer lugar, se incluye una hoja de datos que concentra la información base utilizada para los cálculos. Posteriormente, se integran hojas auxiliares destinadas a cálculos y tablas dinámicas.
+La sección principal del dashboard presenta los indicadores clave mediante gráficos y elementos visuales, permitiendo al usuario explorar la información de manera intuitiva.
+Evidencia obligatoria
+●	Captura de la estructura del archivo (hojas)
+●	Captura general del dashboard
+
+Preguntas guía
+●	¿Cómo está organizado el archivo?
+●	¿Qué secciones tiene el dashboard?
+●	¿Por qué se organizó de esa manera?
+ CITAS: no obligatorias (0)
+4.3 Indicadores Visualizados (KPIs)
+Estructura
+●	Lista de indicadores
+●	Breve explicación de cada uno
+Redacción base guiada
+El dashboard integra un conjunto de indicadores clave de desempeño definidos en etapas previas. Entre los principales indicadores visualizados se encuentran:
+●	Indicador 1: [nombre] – mide [qué mide]
+●	Indicador 2: [nombre] – mide [qué mide]
+●	Indicador 3: [nombre] – mide [qué mide]
+
+Estos indicadores permiten al usuario obtener una visión general del desempeño de [proceso u organización] y facilitan la identificación de áreas que requieren atención.
+Preguntas guía
+●	¿Cuántos KPI se incluyen?
+●	¿Qué mide cada uno?
+●	¿Por qué son relevantes?
+ CITAS: no obligatorias (0)
+4.4 Visualizaciones Incluidas
+Estructura
+●	Tipo de gráfico
+●	Qué información muestra
+●	Para qué sirve
+Redacción base guiada
+Para la visualización de la información se utilizaron distintos tipos de gráficos, seleccionados de acuerdo con la naturaleza de los datos y los objetivos del análisis. Entre las visualizaciones incluidas se encuentran gráficos de barras, gráficos de líneas y gráficos comparativos, los cuales permiten analizar tendencias, comparar categorías y evaluar cambios en el tiempo.
+La selección de estas visualizaciones se realizó buscando claridad y facilidad de interpretación para el usuario final (citar principios básicos de visualización, si se desea).
+Preguntas guía
+●	¿Qué tipo de gráficos se usaron?
+●	¿Qué información muestra cada gráfico?
+●	¿Qué ventaja ofrece cada tipo de gráfico?
+
+ CITAS: opcional (0–1)  (Solo si se citan principios de visualización)
+4.5 Interactividad del Dashboard
+Estructura
+●	Filtros
+●	Segmentadores
+●	Navegación
+Redacción base guiada
+El dashboard incorpora elementos de interactividad que permiten al usuario explorar la información desde distintas perspectivas. Entre estos elementos se incluyen segmentadores y filtros que facilitan el análisis por [categorías: periodo, área, tipo, etc.].
+La interactividad permite analizar escenarios específicos y comparar resultados, mejorando la utilidad del dashboard para la toma de decisiones.
+
+Preguntas guía
+●	¿Qué filtros incluye el dashboard?
+●	¿Qué variables se pueden segmentar?
+●	¿Cómo cambia la información al usar los filtros?
+ CITAS: no obligatorias (0)
+ 
+CAPÍTULO V. RESULTADOS PARCIALES
+ Nota al alumno: Aquí NO van conclusiones finales, solo qué se observa.
+5.1 Principales Hallazgos Visuales
+Estructura
+●	Tendencias
+●	Comparaciones
+●	Patrones
+Redacción base guiada
+A partir de la visualización de los indicadores y gráficos del dashboard, se identifican diversos hallazgos relevantes. En primer lugar, se observa que [describir tendencia principal]. Asimismo, al comparar [categorías], se identifica que [describir comparación].
+Estos hallazgos permiten comprender mejor el comportamiento de la información analizada y proporcionan una base inicial para la toma de decisiones.
+Preguntas guía
+●	¿Qué tendencias se observan?
+●	¿Qué comparaciones son relevantes?
+●	¿Qué resultados llaman más la atención?
+ CITAS: no obligatorias (0)
+5.2 Utilidad del Dashboard para la Toma de Decisiones
+Estructura
+●	Decisiones posibles
+●	Uso práctico
+Redacción base guiada
+Con base en la información presentada en el dashboard, es posible apoyar decisiones relacionadas con [ejemplos: asignación de recursos, seguimiento de desempeño, planeación]. La visualización de los indicadores permite identificar áreas de oportunidad y priorizar acciones de mejora.
+Preguntas guía
+●	¿Qué decisiones se pueden tomar con el dashboard?
+●	¿Qué información es clave para decidir?
+●	¿Qué valor aporta respecto a reportes tradicionales?
+ CITAS: no obligatorias (0)
+5.3 Limitaciones del Desarrollo Actual
+Estructura
+●	Técnicas
+●	De datos
+●	De alcance
+Redacción base guiada
+A pesar de los avances logrados, el desarrollo actual del dashboard presenta algunas limitaciones. Entre ellas se encuentran [limitaciones de datos, actualización, alcance o herramientas]. Estas limitaciones serán consideradas en las recomendaciones finales del proyecto.
+Preguntas guía
+●	¿Qué limitaciones tiene el dashboard?
+●	¿Qué información faltó?
+●	¿Qué se podría mejorar?
+ CITAS: no obligatorias (0)
+ EVIDENCIAS OBLIGATORIAS – PARTE 3
+El alumno DEBE incluir en el documento:
+✔ Captura del dashboard completo
+ ✔ Capturas de al menos 4 gráficos
+ ✔ Tabla con lista de KPIs
+ ✔ Captura de segmentadores o filtros
+ ✔ Archivo del dashboard (Excel / Power BI)
+ RÚBRICA · PARTE 3 (10 PUNTOS)
+Criterio	Puntos
+Desarrollo del dashboard claramente explicado	3
+Estructura y organización del dashboard	2
+KPIs y visualizaciones coherentes	2
+Resultados parciales bien descritos	2
+Evidencia visual completa	1
+TOTAL	10
+ 
+PARTE 4 · ETAPA 4 (10%)
+Propósito de la Parte 4: Cerrar el proyecto demostrando que el dashboard cumple el objetivo, aporta valor, y que el estudiante sabe interpretar la información y documentar correctamente un proyecto de innovación.
+CAPÍTULO VI. RESULTADOS FINALES
+Aquí ya se integran todos los resultados, no parciales.
+6.1 Resultados Generales del Dashboard
+Estructura del apartado
+●	Síntesis de lo que muestra el dashboard
+●	Relación directa con el objetivo general
+Redacción base guiada
+El dashboard desarrollado permite visualizar de manera integrada la información correspondiente a [tipo de información], facilitando el análisis de los indicadores clave definidos en el proyecto. A partir de su implementación, es posible obtener una visión general del comportamiento de [proceso u organización] mediante representaciones gráficas claras y estructuradas.
+En relación con el objetivo general del proyecto, el dashboard cumple con la función de apoyar la toma de decisiones al presentar información relevante de forma accesible y comprensible.
+Preguntas guía (deben reflejarse en el texto)
+●	¿Qué información se visualiza de forma global?
+●	¿Qué aporta el dashboard respecto a la situación inicial?
+●	¿Cómo se relaciona con el objetivo general?
+
+ CITAS: no obligatorias (0)
+
+6.2 Resultados por Indicador (síntesis)
+Estructura
+●	Indicadores más relevantes
+●	Qué muestran en conjunto
+
+Redacción base guiada
+Al analizar los indicadores incluidos en el dashboard, se observa que [describir comportamiento general]. Algunos indicadores destacan por [ejemplo: variaciones, crecimiento, concentración], lo cual permite identificar áreas de oportunidad y fortalezas dentro de [organización o proceso].
+Preguntas guía
+●	¿Qué indicadores son más relevantes?
+●	¿Qué comportamiento general presentan?
+●	¿Qué información es clave para decidir?
+ CITAS: no obligatorias (0)
+CAPÍTULO VII. CONCLUSIONES
+
+7.1 Conclusiones Generales
+Estructura
+●	Conclusión 1: cumplimiento del objetivo
+●	Conclusión 2: utilidad del dashboard
+●	Conclusión 3: aprendizaje del proyecto
+
+Redacción base guiada
+El desarrollo del presente proyecto permitió cumplir el objetivo general planteado, al diseñar una propuesta de dashboard orientada a la visualización de información relevante para la toma de decisiones.
+El dashboard facilita la interpretación de los datos al integrar indicadores clave en una sola interfaz visual, lo que representa una mejora respecto a los métodos tradicionales de análisis.
+Asimismo, el proyecto permitió aplicar de manera práctica los conocimientos adquiridos en la asignatura de Formulación y Evaluación de Proyectos de Innovación, fortaleciendo competencias relacionadas con el análisis de datos, la innovación y la toma de decisiones.
+Preguntas guía
+●	¿Se cumplió el objetivo general?
+●	¿Qué se logró con el dashboard?
+●	¿Qué aprendiste al desarrollar el proyecto?
+ CITAS: no obligatorias (0)
+ 
+CAPÍTULO VIII. RECOMENDACIONES
+
+8.1 Recomendaciones Técnicas
+Redacción base guiada
+Como trabajo futuro, se recomienda ampliar el dashboard incorporando nuevos indicadores, así como mejorar la automatización de los datos para garantizar su actualización continua. Asimismo, podría integrarse información proveniente de otras fuentes para enriquecer el análisis.
+8.2 Recomendaciones Organizacionales
+Redacción base guiada
+Desde el punto de vista organizacional, se recomienda capacitar a los usuarios finales en el uso del dashboard, con el fin de maximizar su aprovechamiento en la toma de decisiones. De igual forma, es importante establecer lineamientos para el uso y mantenimiento de la herramienta.
+Preguntas guía
+●	¿Qué mejoras se pueden hacer al dashboard?
+●	¿Qué se recomienda a la organización?
+●	¿Qué se podría ampliar en el futuro?
+CITAS: opcionales (0–1)
+ (Solo si se quiere reforzar con literatura sobre mejora continua o BI)
+ 
+ANEXOS
+
+Anexo A. Dashboard Final
+Debe incluir:
+●	Captura completa del dashboard
+●	Capturas por sección o KPI
+●	Breve descripción de cada captura
+Anexo B. Base de Datos
+Debe incluir:
+●	Tabla(s) utilizadas
+●	Descripción de variables
+●	Periodo de análisis
+Anexo C. Diccionario de Indicadores (opcional pero recomendado)
+Campos sugeridos:
+●	Nombre del indicador
+●	Definición
+●	Fórmula
+●	Fuente de datos
+●	Decisión que apoya
+ CITAS: no obligatorias (0)
+ 
+REFERENCIAS
+Requisitos obligatorios
+●	Formato APA 7
+●	Orden alfabético
+●	Interlineado sencillo
+●	Sangría francesa
+
+Mínimo de referencias
+MÍNIMO 20 REFERENCIAS TOTALES (sumando todas las partes)
+Distribución sugerida:
+●	Visualización de datos: 3–6
+●	Dashboards / BI: 3–6
+●	KPI / toma de decisiones: 2–6
+●	Metodologías (cascada, Scrum, DT): 2–6
+Preguntas guía para verificar referencias
+●	¿Cada concepto importante está citado?
+●	¿Las referencias aparecen citadas en el texto?
+●	¿El formato APA es correcto?
+  
+RÚBRICA · PARTE 4 (10 PUNTOS)
+Criterio	Puntos
+Resultados finales claros y coherentes	3
+Conclusiones alineadas al objetivo	2
+Recomendaciones pertinentes	2
+Anexos completos y bien presentados	2
+Referencias APA correctas	1
+TOTAL	10
+ 
+FORMATO 
+1. CONFIGURACIÓN GENERAL DEL DOCUMENTO
+●	Tamaño de hoja: Carta (21.59 cm × 27.94 cm)
+●	Márgenes:
+○	Superior: 2.5 cm
+○	Inferior: 2.5 cm
+○	Izquierdo: 3.0 cm
+○	Derecho: 2.5 cm
+
+●	Alineación del texto: Justificada
+●	Interlineado: 1.5 en todo el documento
+○	Excepciones: citas largas, tablas y referencias → sencillo (1.0)
+2. TIPOGRAFÍA
+●	Fuente: Times New Roman o Arial (usar solo una en todo el documento)
+●	Tamaño de letra:
+○	Texto general: 12 pt
+○	Títulos de tablas y figuras: 11 pt
+○	Fuente de tablas/figuras: 10–11 pt
+○	Citas textuales largas (bloque): 11 pt (opcional)
+
+3. ENCABEZADOS Y SUBTÍTULOS
+●	Nivel 1 (Capítulos): MAYÚSCULAS, negritas, centrado, 14 pt
+ Ej.: CAPÍTULO I – GENERALIDADES DEL PROYECTO
+●	Nivel 2 (Apartados): Negritas, alineado a la izquierda, 12 pt
+ Ej.: 1.1 Antecedentes
+●	Nivel 3 (Subapartados): Cursiva, alineado a la izquierda, 12 pt
+ Ej.: 1.1.1 Contexto de la organización
+
+4. SANGRÍA Y ESPACIADO
+●	Sangría de primera línea: 1.25 cm
+●	Espaciado antes/después: 0 pt (recomendado)
+●	No usar dobles espacios entre párrafos
+
+5. PORTADA (OBLIGATORIA)
+Reglas
+●	Todo centrado
+●	Interlineado sencillo
+●	Sin número de página
+
+6. DEDICATORIA
+●	Página independiente
+●	Máximo 1 página
+●	Lenguaje personal y respetuoso
+●	No lleva citas
+
+Título: DEDICATORIA (centrado)
+7. AGRADECIMIENTOS
+●	Página independiente
+●	Máximo 1 página
+●	Lenguaje académico–formal
+●	No lleva citas
+Título: AGRADECIMIENTOS (centrado)
+8. ÍNDICE (TABLA DE CONTENIDO)
+Debe incluir como mínimo:
+●	Dedicatoria
+●	Agradecimientos
+●	Resumen
+●	Introducción
+●	Capítulos I–V
+●	Anexos
+●	Referencias
+Regla: el índice debe generarse automáticamente (Word).
+9. NUMERACIÓN DE PÁGINAS
+●	Portada: sin número
+●	Dedicatoria y Agradecimientos: sin número visible
+●	Índice y preliminares: romanos minúsculos (i, ii, iii)
+●	Cuerpo del documento: arábigos (1, 2, 3…) centrados abajo
+
+
+
+
+10. TABLAS Y FIGURAS (OBLIGATORIO)
+Numeración
+●	Consecutiva por capítulo:
+
+○	Tabla 2.1, Tabla 2.2
+○	Figura 4.1, Figura 4.2
+
+Títulos
+●	Título de tabla: arriba, centrado, 11 pt
+ Ej.: Tabla 3.1. Indicadores incluidos en el dashboard
+●	Título de figura: arriba, centrado, 11 pt
+ Ej.: Figura 4.2. Vista general del dashboard
+Fuente (APA)
+●	Debajo de la tabla/figura, izquierda, 10–11 pt
+○	Elaboración propia:
+■	Fuente: Elaboración propia con base en datos de ___ (Año).
+
+○	Adaptada:
+■	Fuente: Adaptado de Apellido (Año).
+
+Calidad
+●	Imágenes claras (recomendado 300 dpi)
+●	Cada tabla/figura debe aportar información
+11. CITAS Y REFERENCIAS (APA 7)
+Citas en el texto
+●	Paráfrasis: (Apellido, año)
+●	Textual corta (<40 palabras): “texto” (Apellido, año, p. xx)
+●	Textual larga (≥40 palabras): bloque con sangría 1.25 cm, sin comillas
+Referencias
+●	Al final del documento
+●	Orden alfabético
+●	Interlineado sencillo
+●	Sangría francesa 1.25 cm
+Regla de oro: toda referencia debe estar citada en el texto y toda cita debe aparecer en referencias, Cada uno de los párrafos que incluya debe estar citado.
+12. ANEXOS
+●	Capturas del dashboard
+●	Base de datos (si aplica)
+●	Diccionario de indicadores/KPI
+●	Manual breve del dashboard (opcional)
+13. ENTREGA DE ARCHIVOS
+●	Documento: .docx y .pdf
+●	Dashboard: archivo original (Excel/Power BI) + capturas en anexos
+14. CHECKLIST FINAL (PARA EL ALUMNO)
+●	Fuente y tamaño correctos
+●	Interlineado 1.5 (excepciones aplicadas)
+●	Portada, Dedicatoria y Agradecimientos
+●	Índice automático
+●	Paginación correcta
+●	Tablas/Figuras numeradas con fuente APA
+●	Referencias en APA 7
+●	Anexos completos
+●	Dashboard funcional adjunto

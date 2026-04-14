@@ -55,6 +55,8 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [hasCashFund, setHasCashFund] = useState<boolean>(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
@@ -209,6 +211,7 @@ export default function App() {
           localStorage.setItem('last_cash_fund_date', todayStr);
         }
       }
+      setIsDataLoaded(true);
     } catch (error) {
       if (!silent) {
         console.error('Network error fetching data:', error);
@@ -216,7 +219,6 @@ export default function App() {
       }
     } finally {
       if (!silent) setIsLoading(false);
-      setIsDataLoaded(true);
     }
   };
 
@@ -253,10 +255,13 @@ export default function App() {
 
   useEffect(() => {
     const syncPendingAccounts = async () => {
-      if (!googleTokens || !templateId || isAuthChecking || isLoading) return;
+      // CRITICAL: Only sync if data has been successfully loaded from the sheet first
+      // to avoid overwriting the sheet with an empty local state on startup
+      if (!googleTokens || !templateId || isAuthChecking || isLoading || !isDataLoaded) return;
       
+      setIsSyncing(true);
       try {
-        await fetch('/api/sheets/pending-accounts/sync', {
+        const response = await fetch('/api/sheets/pending-accounts/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -265,17 +270,22 @@ export default function App() {
             accounts: pendingAccounts 
           }),
         });
+        if (response.ok) {
+          setLastSyncTime(new Date());
+        }
       } catch (error) {
         console.error('Error syncing pending accounts:', error);
+      } finally {
+        setIsSyncing(false);
       }
     };
 
     const timer = setTimeout(() => {
       syncPendingAccounts();
-    }, 500); // 500ms debounce for faster sync
+    }, 1000); // 1s debounce for stability
 
     return () => clearTimeout(timer);
-  }, [pendingAccounts]);
+  }, [pendingAccounts, isDataLoaded, googleTokens, templateId]);
 
   // Polling for background updates
   useEffect(() => {
@@ -787,14 +797,27 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-1 lg:gap-3">
-            <button 
-              onClick={() => fetchData()}
-              disabled={isLoading || !googleTokens || !templateId}
-              className="p-2 text-dust hover:text-espresso transition-colors disabled:opacity-30"
-              title="Sincronizar con Google Sheets"
-            >
-              <RefreshCw size={18} className={cn(isLoading && "animate-spin")} />
-            </button>
+            <div className="flex items-center gap-2">
+              {isSyncing && (
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-parchment rounded-full animate-pulse">
+                  <div className="w-1.5 h-1.5 bg-bark rounded-full" />
+                  <span className="text-[9px] font-bold text-bark uppercase tracking-wider">Guardando...</span>
+                </div>
+              )}
+              {!isSyncing && lastSyncTime && (
+                <span className="hidden md:inline text-[9px] text-dust font-medium">
+                  Sincronizado: {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              <button 
+                onClick={() => fetchData()}
+                disabled={isLoading || !googleTokens || !templateId}
+                className="p-2 text-dust hover:text-espresso transition-colors disabled:opacity-30"
+                title="Sincronizar con Google Sheets"
+              >
+                <RefreshCw size={18} className={cn(isLoading && "animate-spin")} />
+              </button>
+            </div>
             <button 
               onClick={() => setShowSettings(true)}
               className="p-2 text-dust hover:text-espresso transition-colors"
