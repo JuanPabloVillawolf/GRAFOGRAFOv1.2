@@ -701,6 +701,104 @@ async function startServer() {
     }
   });
 
+  // 10. Format Spreadsheet (Professional Look)
+  app.post("/api/sheets/format", async (req, res) => {
+    const { tokens, spreadsheetId } = req.body;
+    if (!tokens || !spreadsheetId) {
+      return res.status(400).json({ error: "Tokens and Spreadsheet ID are required" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // Get spreadsheet metadata to get sheet IDs
+      const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+      const sheetsData = spreadsheet.data.sheets || [];
+
+      const requests: any[] = [];
+
+      sheetsData.forEach((sheet) => {
+        const sheetId = sheet.properties?.sheetId;
+        if (sheetId === undefined) return;
+
+        // 1. Format Header (Row 1)
+        requests.push({
+          repeatCell: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 0.24, green: 0.15, blue: 0.14 }, // Espresso #3E2723
+                textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 11 },
+                horizontalAlignment: "CENTER",
+                verticalAlignment: "MIDDLE"
+              }
+            },
+            fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+          }
+        });
+
+        // 2. Freeze First Row
+        requests.push({
+          updateSheetProperties: {
+            properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
+            fields: "gridProperties.frozenRowCount"
+          }
+        });
+
+        // 3. Add Alternating Colors (Banding)
+        requests.push({
+          addBanding: {
+            bandedRange: {
+              sheetId,
+              range: { startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 10 },
+            },
+            rowProperties: {
+              headerColor: { red: 0.24, green: 0.15, blue: 0.14 },
+              firstBandColor: { red: 1, green: 1, blue: 1 },
+              secondBandColor: { red: 1, green: 0.98, blue: 0.95 } // Cream #FFF9F1
+            }
+          }
+        });
+
+        // 4. Auto-resize columns
+        requests.push({
+          autoResizeDimensions: {
+            dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 10 }
+          }
+        });
+      });
+
+      // Execute all formatting requests
+      // Note: addBanding might fail if banding already exists, so we wrap in a try-catch or use a different approach
+      // For simplicity in this thesis context, we'll try to delete existing banding first
+      const deleteBandingRequests: any[] = [];
+      sheetsData.forEach(sheet => {
+        const banding = sheet.bandedRanges || [];
+        banding.forEach(b => {
+          deleteBandingRequests.push({ deleteBanding: { bandedRangeId: b.bandedRangeId } });
+        });
+      });
+
+      if (deleteBandingRequests.length > 0) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: { requests: deleteBandingRequests }
+        });
+      }
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: { requests }
+      });
+
+      res.json({ success: true, message: "Tablas formateadas profesionalmente" });
+    } catch (error: any) {
+      console.error("Error formatting spreadsheet:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

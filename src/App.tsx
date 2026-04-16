@@ -10,7 +10,7 @@ import { Login } from './components/Login';
 import { CashFundModal } from './components/CashFundModal';
 import { Expenses } from './components/Expenses';
 import { Sale, Product, Event, InventoryMovement, PendingAccount, Expense, CashLog } from './types';
-import { Settings, RefreshCw } from 'lucide-react';
+import { Settings, RefreshCw, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatCurrency } from './lib/utils';
 
@@ -657,7 +657,33 @@ export default function App() {
   };
 
   const [isTesting, setIsTesting] = useState(false);
+  const [isFormatting, setIsFormatting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const formatSpreadsheet = async () => {
+    if (!templateId || !googleTokens) return;
+    setIsFormatting(true);
+    try {
+      const response = await fetch('/api/sheets/format', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tokens: googleTokens, 
+          spreadsheetId: extractId(templateId)
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert('¡Tablas formateadas con éxito! Ahora tu Google Sheet tiene un diseño profesional.');
+      } else {
+        alert('Error al formatear: ' + result.error);
+      }
+    } catch (error) {
+      alert('Error de red al intentar formatear.');
+    } finally {
+      setIsFormatting(false);
+    }
+  };
 
   const testConnection = async () => {
     if (!templateId) return;
@@ -728,6 +754,16 @@ export default function App() {
                     placeholder="Pega el ID o URL de tu Google Sheet"
                   />
                 </div>
+                {googleTokens && templateId && (
+                  <button 
+                    onClick={formatSpreadsheet}
+                    disabled={isFormatting}
+                    className="w-full py-2 bg-parchment border border-bark/20 text-bark rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-mist transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Sparkles size={14} />
+                    {isFormatting ? 'Formateando...' : 'Aplicar Diseño Profesional a Tablas'}
+                  </button>
+                )}
                 <button 
                   onClick={() => setShowSettings(false)}
                   className="w-full py-3 bg-espresso text-cream rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-bark transition-colors"
@@ -965,6 +1001,16 @@ export default function App() {
                       * El sistema intentará escribir en pestañas con nombres: <strong>Libros, Café, Nieve, Snacks</strong>. Asegúrate de que existan en tu plantilla.
                     </p>
                   </div>
+                  {googleTokens && templateId && (
+                    <button 
+                      onClick={formatSpreadsheet}
+                      disabled={isFormatting}
+                      className="w-full py-3 bg-parchment border border-bark/20 text-bark rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-mist transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Sparkles size={14} />
+                      {isFormatting ? 'Formateando...' : 'Aplicar Diseño Profesional a Tablas'}
+                    </button>
+                  )}
                 </div>
                 <div className="p-4 bg-cream flex justify-end gap-3">
                   <button 
