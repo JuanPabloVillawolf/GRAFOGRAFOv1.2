@@ -66,6 +66,7 @@ export function InventoryHistory({ movements }: InventoryHistoryProps) {
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider">Tipo</th>
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider text-center">Cant.</th>
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider text-center">Stock Final</th>
+                <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider">Usuario</th>
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider">Notas</th>
               </tr>
             </thead>
@@ -101,6 +102,7 @@ export function InventoryHistory({ movements }: InventoryHistoryProps) {
                     {move.quantity > 0 ? `+${move.quantity}` : move.quantity}
                   </td>
                   <td className="px-4 py-3 text-center font-medium text-espresso">{move.stockResult}</td>
+                  <td className="px-4 py-3 text-dust font-medium whitespace-nowrap">{move.username || '---'}</td>
                   <td className="px-4 py-3 text-dust italic max-w-xs truncate" title={move.notes}>
                     {move.notes}
                   </td>

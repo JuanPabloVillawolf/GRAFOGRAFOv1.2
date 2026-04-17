@@ -69,6 +69,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider">Producto</th>
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider">Categoría</th>
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider">Pago</th>
+                <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider">Usuario</th>
                 <th className="px-4 py-2 font-medium text-dust uppercase tracking-wider text-right">Monto</th>
               </tr>
             </thead>
@@ -89,6 +90,11 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
                     )} title={sale.paymentMethod}>
                       {sale.paymentMethod}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5 text-dust">
+                      <span className="text-[11px] font-medium">{sale.username || '---'}</span>
+                    </div>
                   </td>
                   <td className="px-4 py-3 font-serif text-espresso font-semibold text-right">{formatCurrency(sale.amount)}</td>
                 </tr>

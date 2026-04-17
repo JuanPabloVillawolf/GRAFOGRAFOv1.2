@@ -10,7 +10,7 @@ import { Login } from './components/Login';
 import { CashFundModal } from './components/CashFundModal';
 import { Expenses } from './components/Expenses';
 import { Sale, Product, Event, InventoryMovement, PendingAccount, Expense, CashLog } from './types';
-import { Settings, RefreshCw, Sparkles } from 'lucide-react';
+import { Settings, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatCurrency } from './lib/utils';
 
@@ -301,9 +301,12 @@ export default function App() {
   }, [googleTokens, templateId, currentUser, activePendingAccount]);
 
   const handleAddSale = async (product: Product, quantity: number = 1, paymentMethod: string = 'Efectivo', totalAmount?: number, providedCustomerName?: string) => {
-    if (!googleTokens || !templateId) {
-      alert('Por favor, configura la conexión con Google Sheets primero.');
-      setShowSettings(true);
+    if (!googleTokens || !templateId || !currentUser) {
+      if (!currentUser) alert('Debes iniciar sesión para realizar transacciones.');
+      else {
+        alert('Por favor, configura la conexión con Google Sheets primero.');
+        setShowSettings(true);
+      }
       return;
     }
 
@@ -393,6 +396,7 @@ export default function App() {
       amount,
       quantity,
       paymentMethod,
+      username: currentUser.username,
     };
 
     // Optimistic update
@@ -406,7 +410,8 @@ export default function App() {
       type: "Salida (Venta)",
       quantity: -quantity,
       stockResult: product.stock - quantity,
-      notes: `Venta ID: ${newSale.id}`
+      notes: `Venta ID: ${newSale.id}`,
+      username: currentUser.username
     };
     setMovements(prev => [newMovement, ...prev]);
 
@@ -440,7 +445,7 @@ export default function App() {
   };
 
   const handlePayPendingAccount = async (account: PendingAccount, sessionPayments: { method: string, amount: number }[]) => {
-    if (!googleTokens || !templateId) return;
+    if (!googleTokens || !templateId || !currentUser) return;
 
     const now = new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
     const totalAccount = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -468,6 +473,7 @@ export default function App() {
             amount: item.price * item.quantity,
             quantity: item.quantity,
             paymentMethod: paymentMethodDesc,
+            username: currentUser.username,
           };
 
           setSales(prev => [newSale, ...prev]);
@@ -499,6 +505,7 @@ export default function App() {
             amount: p.amount,
             quantity: 1,
             paymentMethod: p.method,
+            username: currentUser.username,
           };
 
           setSales(prev => [abonoSale, ...prev]);
@@ -537,7 +544,7 @@ export default function App() {
   };
 
   const handleAddProduct = async (product: Omit<Product, 'id'>) => {
-    if (!googleTokens || !templateId) return;
+    if (!googleTokens || !templateId || !currentUser) return;
 
     const newProduct: Product = {
       ...product,
@@ -554,7 +561,8 @@ export default function App() {
       type: "Alta de Producto",
       quantity: newProduct.stock,
       stockResult: newProduct.stock,
-      notes: "Registro inicial"
+      notes: "Registro inicial",
+      username: currentUser.username
     };
     setMovements([newMovement, ...movements]);
 
@@ -562,7 +570,12 @@ export default function App() {
       await fetch('/api/sheets/inventory/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokens: googleTokens, spreadsheetId: templateId, product: newProduct }),
+        body: JSON.stringify({ 
+          tokens: googleTokens, 
+          spreadsheetId: templateId, 
+          product: newProduct,
+          username: currentUser.username 
+        }),
       });
     } catch (error) {
       fetchData();
@@ -570,7 +583,7 @@ export default function App() {
   };
 
   const handleUpdateStock = async (productId: string, adjustment: number, notes: string = 'Ajuste manual desde inventario') => {
-    if (!googleTokens || !templateId) return;
+    if (!googleTokens || !templateId || !currentUser) return;
 
     // Optimistic update
     setProducts(products.map(p => p.id === productId ? { ...p, stock: p.stock + adjustment } : p));
@@ -584,7 +597,8 @@ export default function App() {
         type: adjustment > 0 ? "Entrada" : "Ajuste/Salida",
         quantity: adjustment,
         stockResult: product.stock + adjustment,
-        notes: notes
+        notes: notes,
+        username: currentUser.username
       };
       setMovements([newMovement, ...movements]);
     }
@@ -598,7 +612,8 @@ export default function App() {
           spreadsheetId: templateId, 
           productId, 
           adjustment,
-          notes
+          notes,
+          username: currentUser.username
         }),
       });
     } catch (error) {
@@ -657,33 +672,7 @@ export default function App() {
   };
 
   const [isTesting, setIsTesting] = useState(false);
-  const [isFormatting, setIsFormatting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  const formatSpreadsheet = async () => {
-    if (!templateId || !googleTokens) return;
-    setIsFormatting(true);
-    try {
-      const response = await fetch('/api/sheets/format', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          tokens: googleTokens, 
-          spreadsheetId: extractId(templateId)
-        }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        alert('¡Tablas formateadas con éxito! Ahora tu Google Sheet tiene un diseño profesional.');
-      } else {
-        alert('Error al formatear: ' + result.error);
-      }
-    } catch (error) {
-      alert('Error de red al intentar formatear.');
-    } finally {
-      setIsFormatting(false);
-    }
-  };
 
   const testConnection = async () => {
     if (!templateId) return;
@@ -754,16 +743,6 @@ export default function App() {
                     placeholder="Pega el ID o URL de tu Google Sheet"
                   />
                 </div>
-                {googleTokens && templateId && (
-                  <button 
-                    onClick={formatSpreadsheet}
-                    disabled={isFormatting}
-                    className="w-full py-2 bg-parchment border border-bark/20 text-bark rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-mist transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Sparkles size={14} />
-                    {isFormatting ? 'Formateando...' : 'Aplicar Diseño Profesional a Tablas'}
-                  </button>
-                )}
                 <button 
                   onClick={() => setShowSettings(false)}
                   className="w-full py-3 bg-espresso text-cream rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-bark transition-colors"
@@ -996,21 +975,6 @@ export default function App() {
                       Puedes pegar la <strong>URL completa</strong> del archivo y nosotros extraeremos el ID automáticamente.
                     </p>
                   </div>
-                  <div className="bg-parchment/50 p-3 rounded-lg border border-mist/50">
-                    <p className="text-[10px] text-espresso/70 leading-relaxed italic">
-                      * El sistema intentará escribir en pestañas con nombres: <strong>Libros, Café, Nieve, Snacks</strong>. Asegúrate de que existan en tu plantilla.
-                    </p>
-                  </div>
-                  {googleTokens && templateId && (
-                    <button 
-                      onClick={formatSpreadsheet}
-                      disabled={isFormatting}
-                      className="w-full py-3 bg-parchment border border-bark/20 text-bark rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-mist transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Sparkles size={14} />
-                      {isFormatting ? 'Formateando...' : 'Aplicar Diseño Profesional a Tablas'}
-                    </button>
-                  )}
                 </div>
                 <div className="p-4 bg-cream flex justify-end gap-3">
                   <button 

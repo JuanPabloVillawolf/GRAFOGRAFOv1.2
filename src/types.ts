@@ -17,6 +17,7 @@ export interface Sale {
   amount: number;
   quantity: number;
   paymentMethod: string;
+  username: string;
 }
 
 export interface Event {
@@ -57,6 +58,7 @@ export interface InventoryMovement {
   quantity: number;
   stockResult: number;
   notes: string;
+  username: string;
 }
 
 export interface Expense {

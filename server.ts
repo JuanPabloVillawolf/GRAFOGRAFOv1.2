@@ -90,8 +90,8 @@ async function startServer() {
 
       const requiredSheets = [
         { title: "Inventario", headers: ["ID", "Nombre", "Categoría", "Precio", "Stock", "Icono"] },
-        { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago"] },
-        { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas"] },
+        { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago", "Usuario"] },
+        { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas", "Usuario"] },
         { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
         { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
         { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] },
@@ -103,7 +103,7 @@ async function startServer() {
       try {
         batchRes = await sheets.spreadsheets.values.batchGet({
           spreadsheetId,
-          ranges: requiredSheets.map(s => `${s.title}!A2:H`)
+          ranges: requiredSheets.map(s => `${s.title}!A2:I`)
         });
       } catch (err: any) {
         // If sheets don't exist, initialize them
@@ -137,7 +137,7 @@ async function startServer() {
           // Retry fetch
           batchRes = await sheets.spreadsheets.values.batchGet({
             spreadsheetId,
-            ranges: requiredSheets.map(s => `${s.title}!A2:H`)
+            ranges: requiredSheets.map(s => `${s.title}!A2:I`)
           });
         } else {
           throw err;
@@ -173,7 +173,8 @@ async function startServer() {
         category: row[3],
         quantity: parseInt(row[4]) || 0,
         amount: parseFloat(row[6]) || 0,
-        paymentMethod: row[7] || "Efectivo"
+        paymentMethod: row[7] || "Efectivo",
+        username: row[8] || ""
       })).reverse(); // Newest first
 
       const movements = getSheetValues("Movimientos").map(row => ({
@@ -183,7 +184,8 @@ async function startServer() {
         type: row[3],
         quantity: parseInt(row[4]) || 0,
         stockResult: parseInt(row[5]) || 0,
-        notes: row[6] || ""
+        notes: row[6] || "",
+        username: row[7] || ""
       })).reverse();
 
       const expenses = getSheetValues("Gastos").map(row => ({
@@ -372,7 +374,8 @@ async function startServer() {
             sale.quantity,
             sale.amount / sale.quantity,
             sale.amount,
-            sale.paymentMethod
+            sale.paymentMethod,
+            sale.username || ""
           ]]
         }
       });
@@ -409,7 +412,8 @@ async function startServer() {
               "Salida (Venta)",
               -sale.quantity,
               newStock,
-              `Venta ID: ${sale.id}`
+              `Venta ID: ${sale.id}`,
+              sale.username || ""
             ]]
           }
         });
@@ -459,7 +463,8 @@ async function startServer() {
               adjustment > 0 ? "Entrada" : "Ajuste/Salida",
               adjustment,
               newStock,
-              notes || ""
+              notes || "",
+              req.body.username || ""
             ]]
           }
         });
@@ -505,7 +510,8 @@ async function startServer() {
             "Alta de Producto",
             product.stock,
             product.stock,
-            "Registro inicial"
+            "Registro inicial",
+            req.body.username || ""
           ]]
         }
       });
@@ -697,104 +703,6 @@ async function startServer() {
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error syncing pending accounts:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 10. Format Spreadsheet (Professional Look)
-  app.post("/api/sheets/format", async (req, res) => {
-    const { tokens, spreadsheetId } = req.body;
-    if (!tokens || !spreadsheetId) {
-      return res.status(400).json({ error: "Tokens and Spreadsheet ID are required" });
-    }
-
-    try {
-      oauth2Client.setCredentials(tokens);
-      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-
-      // Get spreadsheet metadata to get sheet IDs
-      const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
-      const sheetsData = spreadsheet.data.sheets || [];
-
-      const requests: any[] = [];
-
-      sheetsData.forEach((sheet) => {
-        const sheetId = sheet.properties?.sheetId;
-        if (sheetId === undefined) return;
-
-        // 1. Format Header (Row 1)
-        requests.push({
-          repeatCell: {
-            range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: { red: 0.24, green: 0.15, blue: 0.14 }, // Espresso #3E2723
-                textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true, fontSize: 11 },
-                horizontalAlignment: "CENTER",
-                verticalAlignment: "MIDDLE"
-              }
-            },
-            fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
-          }
-        });
-
-        // 2. Freeze First Row
-        requests.push({
-          updateSheetProperties: {
-            properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
-            fields: "gridProperties.frozenRowCount"
-          }
-        });
-
-        // 3. Add Alternating Colors (Banding)
-        requests.push({
-          addBanding: {
-            bandedRange: {
-              sheetId,
-              range: { startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 10 },
-            },
-            rowProperties: {
-              headerColor: { red: 0.24, green: 0.15, blue: 0.14 },
-              firstBandColor: { red: 1, green: 1, blue: 1 },
-              secondBandColor: { red: 1, green: 0.98, blue: 0.95 } // Cream #FFF9F1
-            }
-          }
-        });
-
-        // 4. Auto-resize columns
-        requests.push({
-          autoResizeDimensions: {
-            dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 10 }
-          }
-        });
-      });
-
-      // Execute all formatting requests
-      // Note: addBanding might fail if banding already exists, so we wrap in a try-catch or use a different approach
-      // For simplicity in this thesis context, we'll try to delete existing banding first
-      const deleteBandingRequests: any[] = [];
-      sheetsData.forEach(sheet => {
-        const banding = sheet.bandedRanges || [];
-        banding.forEach(b => {
-          deleteBandingRequests.push({ deleteBanding: { bandedRangeId: b.bandedRangeId } });
-        });
-      });
-
-      if (deleteBandingRequests.length > 0) {
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          requestBody: { requests: deleteBandingRequests }
-        });
-      }
-
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: { requests }
-      });
-
-      res.json({ success: true, message: "Tablas formateadas profesionalmente" });
-    } catch (error: any) {
-      console.error("Error formatting spreadsheet:", error);
       res.status(500).json({ error: error.message });
     }
   });

@@ -200,7 +200,7 @@ Desde el punto de vista organizacional, se recomienda establecer un protocolo de
 
 ### Anexo B. Base de Datos (Google Sheets)
 *   **Estructura:** Hojas de Inventario, Ventas, Movimientos, Usuarios, Caja, Gastos y Cuentas.
-*   **Variables:** ID, Fecha, Producto, Cantidad, Precio, Método de Pago, etc.
+*   **Variables:** ID, Fecha, Producto, Cantidad, Precio, Método de Pago, Usuario (para trazabilidad), etc.
 
 ### Anexo C. Diccionario de Indicadores
 *   **Ventas Totales:** Suma de columna 'Total' en hoja Ventas.
