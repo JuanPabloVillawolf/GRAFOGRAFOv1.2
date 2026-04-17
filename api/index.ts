@@ -82,8 +82,8 @@ app.post("/api/sheets/data", async (req, res) => {
 
     const requiredSheets = [
       { title: "Inventario", headers: ["ID", "Nombre", "Categoría", "Precio", "Stock", "Icono"] },
-      { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago"] },
-      { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas"] },
+      { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago", "Usuario"] },
+      { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas", "Usuario"] },
       { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
       { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
       { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] },
@@ -116,16 +116,24 @@ app.post("/api/sheets/data", async (req, res) => {
       }
     }
 
-    const [inventoryRes, salesRes, movementsRes, expensesRes, cashRes, pendingRes] = await Promise.all([
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:F" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Ventas!A2:H" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Movimientos!A2:G" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Gastos!A2:G" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Caja!A2:E" }),
-      sheets.spreadsheets.values.get({ spreadsheetId, range: "Cuentas!A2:E" })
-    ]);
+    const batchRes = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: requiredSheets.map(s => `${s.title}!A2:I`)
+    });
 
-    const inventory = (inventoryRes.data.values || []).map((row, index) => ({
+    const valueRanges = batchRes.data.valueRanges || [];
+    
+    const getSheetValues = (title: string) => {
+      const vr = valueRanges.find(v => {
+        if (!v.range) return false;
+        const sheetPart = v.range.split('!')[0];
+        const normalizedSheetName = sheetPart.replace(/'/g, '');
+        return normalizedSheetName === title;
+      });
+      return vr?.values || [];
+    };
+
+    const inventory = getSheetValues("Inventario").map((row, index) => ({
       id: row[0] || `row-${index + 2}`,
       name: row[1],
       category: row[2],
@@ -134,27 +142,29 @@ app.post("/api/sheets/data", async (req, res) => {
       icon: row[5]
     }));
 
-    const sales = (salesRes.data.values || []).map(row => ({
+    const sales = getSheetValues("Ventas").map(row => ({
       id: row[0],
       timestamp: row[1],
       productName: row[2],
       category: row[3],
       quantity: parseInt(row[4]) || 0,
       amount: parseFloat(row[6]) || 0,
-      paymentMethod: row[7] || "Efectivo"
+      paymentMethod: row[7] || "Efectivo",
+      username: row[8] || ""
     })).reverse();
 
-    const movements = (movementsRes.data.values || []).map(row => ({
+    const movements = getSheetValues("Movimientos").map(row => ({
       timestamp: row[0],
       productId: row[1],
       productName: row[2],
       type: row[3],
       quantity: parseInt(row[4]) || 0,
       stockResult: parseInt(row[5]) || 0,
-      notes: row[6] || ""
+      notes: row[6] || "",
+      username: row[7] || ""
     })).reverse();
 
-    const expenses = (expensesRes.data.values || []).map(row => ({
+    const expenses = getSheetValues("Gastos").map(row => ({
       id: row[0],
       timestamp: row[1],
       description: row[2],
@@ -164,7 +174,7 @@ app.post("/api/sheets/data", async (req, res) => {
       notes: row[6] || ""
     })).reverse();
 
-    const cashLogs = (cashRes.data.values || []).map(row => ({
+    const cashLogs = getSheetValues("Caja").map(row => ({
       timestamp: row[0],
       username: row[1],
       type: row[2],
@@ -172,7 +182,7 @@ app.post("/api/sheets/data", async (req, res) => {
       notes: row[4] || ""
     })).reverse();
 
-    const pendingAccounts = (pendingRes.data.values || []).map(row => ({
+    const pendingAccounts = getSheetValues("Cuentas").map(row => ({
       id: row[0],
       customerName: row[1],
       createdAt: row[2],
@@ -323,7 +333,8 @@ app.post("/api/sheets/sale", async (req, res) => {
           sale.quantity,
           sale.amount / sale.quantity,
           sale.amount,
-          sale.paymentMethod
+          sale.paymentMethod,
+          sale.username || ""
         ]]
       }
     });
@@ -358,7 +369,8 @@ app.post("/api/sheets/sale", async (req, res) => {
             "Salida (Venta)",
             -sale.quantity,
             newStock,
-            `Venta ID: ${sale.id}`
+            `Venta ID: ${sale.id}`,
+            sale.username || ""
           ]]
         }
       });
@@ -408,7 +420,8 @@ app.post("/api/sheets/inventory/update", async (req, res) => {
             adjustment > 0 ? "Entrada" : "Ajuste/Salida",
             adjustment,
             newStock,
-            notes || ""
+            notes || "",
+            req.body.username || ""
           ]]
         }
       });
@@ -454,7 +467,8 @@ app.post("/api/sheets/inventory/add", async (req, res) => {
           "Alta de Producto",
           product.stock,
           product.stock,
-          "Registro inicial"
+          "Registro inicial",
+          req.body.username || ""
         ]]
       }
     });
