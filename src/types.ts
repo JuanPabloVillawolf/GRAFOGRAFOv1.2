@@ -46,6 +46,7 @@ export interface PendingAccount {
     amount: number;
     timestamp: string;
   }[];
+  status: 'Abierta' | 'Pagada';
   createdAt: string;
   updatedAt: string;
 }

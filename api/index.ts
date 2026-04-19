@@ -87,7 +87,7 @@ app.post("/api/sheets/data", async (req, res) => {
       { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
       { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
       { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] },
-      { title: "Cuentas", headers: ["ID", "Nombre Cliente", "Fecha Creación", "Fecha Actualización", "Items (JSON)", "Pagos (JSON)"] }
+      { title: "Cuentas", headers: ["ID", "Nombre Cliente", "Fecha Creación", "Fecha Actualización", "Items (JSON)", "Pagos (JSON)", "Estado"] }
     ];
 
     for (const reqSheet of requiredSheets) {
@@ -188,7 +188,8 @@ app.post("/api/sheets/data", async (req, res) => {
       createdAt: row[2],
       updatedAt: row[3],
       items: JSON.parse(row[4] || "[]"),
-      payments: JSON.parse(row[5] || "[]")
+      payments: JSON.parse(row[5] || "[]"),
+      status: row[6] || 'Abierta'
     }));
 
     res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts });
@@ -493,7 +494,7 @@ app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
     // Clear existing accounts (except headers) and write new ones
     await sheets.spreadsheets.values.clear({
       spreadsheetId,
-      range: "Cuentas!A2:E"
+      range: "Cuentas!A2:Z"
     });
 
     if (accounts.length > 0) {
@@ -503,7 +504,8 @@ app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
         acc.createdAt,
         acc.updatedAt,
         JSON.stringify(acc.items),
-        JSON.stringify(acc.payments || [])
+        JSON.stringify(acc.payments || []),
+        acc.status || 'Abierta'
       ]);
 
       await sheets.spreadsheets.values.update({

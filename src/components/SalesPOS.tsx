@@ -51,7 +51,7 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
     }
   }, [activePendingAccount, showPaymentModal]);
 
-  const categories = [...new Set([...['Libros', 'Café', 'Nieve', 'Snacks'], ...products.map(p => p.category)])];
+  const categories = [...new Set(products.map(p => p.category))];
 
   const toggleCategory = (cat: string) => {
     if (expandedCategory === cat) {

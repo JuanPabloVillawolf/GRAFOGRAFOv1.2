@@ -95,7 +95,7 @@ async function startServer() {
         { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
         { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
         { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] },
-        { title: "Cuentas", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)"] }
+        { title: "Cuentas", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)", "Estado"] }
       ];
 
       // Try to fetch data first (saves 1 read request if sheets exist)
@@ -225,7 +225,8 @@ async function startServer() {
           createdAt: row[2],
           updatedAt: row[3],
           items,
-          payments
+          payments,
+          status: row[6] || 'Abierta'
         };
       });
 
@@ -664,7 +665,76 @@ async function startServer() {
     }
   });
 
-  // 8. Sync Pending Accounts
+  // 9. Cleanup Sales Categories
+  app.post("/api/sheets/sales/cleanup-categories", async (req, res) => {
+    const { tokens, spreadsheetId } = req.body;
+    if (!tokens || !spreadsheetId) {
+      return res.status(400).json({ error: "Faltan tokens o ID de hoja" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // 1. Get all categories from Inventario
+      const inventoryRes = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Inventario!C2:C",
+      });
+      const inventoryCategories = new Set(
+        (inventoryRes.data.values || [])
+          .map(row => row[0])
+          .filter(Boolean)
+          .map(c => c.trim().toLowerCase())
+      );
+
+      // 2. Get all sales
+      const salesRes = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Ventas!A1:I",
+      });
+      const salesRows = salesRes.data.values || [];
+      if (salesRows.length <= 1) {
+        return res.json({ success: true, message: "No hay ventas para limpiar" });
+      }
+
+      const headers = salesRows[0];
+      const dataRows = salesRows.slice(1);
+
+      // 3. Filter sales where category exists in inventory
+      const filteredSales = dataRows.filter(row => {
+        const category = row[3]; // Ventas Column D (index 3) is Categoría
+        if (!category) return true; // Keep if no category? Or delete? User said if category not found, delete.
+        const normalizedCategory = category.trim().toLowerCase();
+        return inventoryCategories.has(normalizedCategory);
+      });
+
+      // 4. Overwrite Ventas sheet
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId,
+        range: "Ventas!A2:Z",
+      });
+
+      if (filteredSales.length > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: "Ventas!A2",
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: filteredSales }
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        removedCount: dataRows.length - filteredSales.length 
+      });
+    } catch (error: any) {
+      console.error("Error cleaning up sales categories:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 10. Sync Pending Accounts
   app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
     const { tokens, spreadsheetId, accounts } = req.body;
     if (!tokens || !spreadsheetId || !accounts) {
@@ -679,7 +749,7 @@ async function startServer() {
       // First, clear existing data (except headers)
       await sheets.spreadsheets.values.clear({
         spreadsheetId,
-        range: "Cuentas!A2:F",
+        range: "Cuentas!A2:Z",
       });
 
       if (accounts.length > 0) {
@@ -689,7 +759,8 @@ async function startServer() {
           acc.createdAt,
           acc.updatedAt,
           JSON.stringify(acc.items),
-          JSON.stringify(acc.payments || [])
+          JSON.stringify(acc.payments || []),
+          acc.status || 'Abierta'
         ]);
 
         await sheets.spreadsheets.values.update({

@@ -14,19 +14,6 @@ import { Settings, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatCurrency } from './lib/utils';
 
-const INITIAL_PRODUCTS: Product[] = [
-  { id: '1', name: 'El Principito', category: 'Libros', price: 180, stock: 8, icon: 'book' },
-  { id: '2', name: 'Pedro Páramo', category: 'Libros', price: 150, stock: 6, icon: 'book' },
-  { id: '3', name: 'Café (Taza Chica)', category: 'Bebidas', price: 15, stock: 50, icon: 'coffee' },
-  { id: '4', name: 'Café (Taza Grande)', category: 'Bebidas', price: 30, stock: 40, icon: 'coffee' },
-  { id: '5', name: 'Nieve de Vainilla Papantla', category: 'Bebidas', price: 35, stock: 30, icon: 'ice-cream' },
-  { id: '6', name: 'Nieve de Chocolate Oaxaqueño', category: 'Bebidas', price: 35, stock: 25, icon: 'ice-cream' },
-  { id: '7', name: 'Nieve de Fresa del Bosque', category: 'Bebidas', price: 35, stock: 20, icon: 'ice-cream' },
-  { id: '8', name: 'Galleta de Chocolate', category: 'Snacks', price: 15, stock: 20, icon: 'cookie' },
-  { id: '9', name: 'Galleta de Nuez Macadamia', category: 'Snacks', price: 15, stock: 15, icon: 'cookie' },
-  { id: '10', name: 'Galleta de Avena', category: 'Snacks', price: 15, stock: 18, icon: 'cookie' },
-];
-
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [sales, setSales] = useState<Sale[]>([]);
@@ -365,6 +352,7 @@ export default function App() {
           const newAccount: PendingAccount = {
             id: Math.random().toString(36).substr(2, 9),
             customerName: finalName,
+            status: 'Abierta',
             createdAt: now,
             updatedAt: now,
             items: [{
@@ -490,7 +478,7 @@ export default function App() {
           });
         }
 
-        setPendingAccounts(prev => prev.filter(a => a.id !== account.id));
+        setPendingAccounts(prev => prev.map(a => a.id === account.id ? { ...a, status: 'Pagada', updatedAt: now } : a));
         if (activePendingAccount?.id === account.id) {
           setActivePendingAccount(null);
         }
@@ -702,6 +690,33 @@ export default function App() {
     }
   };
 
+  const handleCleanupSalesCategories = async () => {
+    if (!googleTokens || !templateId) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/sheets/sales/cleanup-categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tokens: googleTokens, 
+          spreadsheetId: templateId 
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert(`Limpieza completada. Se eliminaron ${result.removedCount} registros de venta con categorías no existentes.`);
+        fetchData();
+      } else {
+        alert('Error al limpiar categorías: ' + result.error);
+      }
+    } catch (error) {
+      alert('Error de red al intentar limpiar categorías.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isAuthChecking) return null;
 
   if (!currentUser) {
@@ -864,6 +879,7 @@ export default function App() {
               sales={sales} 
               products={products} 
               expenses={expenses} 
+              onCleanupCategories={currentUser?.role === 'admin' ? handleCleanupSalesCategories : undefined}
             />
           )}
           {activeView === 'gastos' && (
@@ -878,14 +894,14 @@ export default function App() {
               products={products} 
               onAddSale={handleAddSale} 
               sales={sales} 
-              pendingAccounts={pendingAccounts}
+              pendingAccounts={pendingAccounts.filter(a => a.status === 'Abierta')}
               activePendingAccount={activePendingAccount}
               onCancelPending={() => setActivePendingAccount(null)}
             />
           )}
           {activeView === 'cuentas' && (
             <PendingAccounts 
-              accounts={pendingAccounts} 
+              accounts={pendingAccounts.filter(a => a.status === 'Abierta')} 
               onSelectAccount={(acc) => {
                 setActivePendingAccount(acc);
                 setActiveView('ventas');

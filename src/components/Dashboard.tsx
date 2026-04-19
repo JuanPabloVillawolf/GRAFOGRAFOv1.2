@@ -7,9 +7,10 @@ interface DashboardProps {
   sales: Sale[];
   products: Product[];
   expenses: Expense[];
+  onCleanupCategories?: () => void;
 }
 
-export function Dashboard({ sales, products, expenses }: DashboardProps) {
+export function Dashboard({ sales, products, expenses, onCleanupCategories }: DashboardProps) {
   // Helper to parse "DD/MM/YYYY HH:MM:SS" or similar es-MX strings
   const parseESDate = (str: string) => {
     if (!str) return new Date();
@@ -273,6 +274,26 @@ export function Dashboard({ sales, products, expenses }: DashboardProps) {
           </div>
         </div>
       </div>
+
+      {onCleanupCategories && (
+        <div className="bg-white p-6 rounded-xl border border-parchment flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-terra/10 text-terra rounded-xl">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h4 className="font-serif text-lg text-espresso">Mantenimiento de Datos</h4>
+              <p className="text-xs text-dust">Sincroniza las categorías de ventas con el inventario actual.</p>
+            </div>
+          </div>
+          <button 
+            onClick={onCleanupCategories}
+            className="w-full sm:w-auto px-6 py-3 bg-terra text-white rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-bark transition-colors shadow-lg shadow-terra/10"
+          >
+            Limpiar Categorías
+          </button>
+        </div>
+      )}
     </div>
   );
 }

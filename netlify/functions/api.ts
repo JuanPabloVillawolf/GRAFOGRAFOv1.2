@@ -88,7 +88,8 @@ app.post("/api/sheets/data", async (req, res) => {
       { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas", "Usuario"] },
       { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
       { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
-      { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] }
+      { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] },
+      { title: "Cuentas", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)", "Estado"] }
     ];
 
     for (const reqSheet of requiredSheets) {
@@ -183,7 +184,17 @@ app.post("/api/sheets/data", async (req, res) => {
       notes: row[4] || ""
     })).reverse();
 
-    res.json({ inventory, sales, movements, expenses, cashLogs });
+    const pendingAccounts = getSheetValues("Cuentas").map(row => ({
+      id: row[0],
+      customerName: row[1],
+      createdAt: row[2],
+      updatedAt: row[3],
+      items: JSON.parse(row[4] || "[]"),
+      payments: JSON.parse(row[5] || "[]"),
+      status: row[6] || 'Abierta'
+    }));
+
+    res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts });
   } catch (error: any) {
     console.error("Error fetching data from sheets:", error);
     res.status(500).json({ error: error.message });
@@ -467,6 +478,48 @@ app.post("/api/sheets/inventory/add", async (req, res) => {
 
     res.json({ success: true });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 10. Sync Pending Accounts
+app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
+  const { tokens, spreadsheetId, accounts } = req.body;
+  if (!tokens || !spreadsheetId || !accounts) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    oauth2Client.setCredentials(tokens);
+    const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: "Cuentas!A2:Z"
+    });
+
+    if (accounts.length > 0) {
+      const values = accounts.map((acc: any) => [
+        acc.id,
+        acc.customerName,
+        acc.createdAt,
+        acc.updatedAt,
+        JSON.stringify(acc.items),
+        JSON.stringify(acc.payments || []),
+        acc.status || 'Abierta'
+      ]);
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: "Cuentas!A2",
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values }
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error syncing pending accounts:", error);
     res.status(500).json({ error: error.message });
   }
 });

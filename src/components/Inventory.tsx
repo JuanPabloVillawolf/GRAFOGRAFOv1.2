@@ -36,7 +36,7 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
     icon: 'book'
   });
 
-  const categories = [...new Set([...['Libros', 'Café', 'Nieve', 'Snacks'], ...products.map(p => p.category)])];
+  const categories = [...new Set(products.map(p => p.category))];
 
   const toggleCategory = (cat: string) => {
     if (expandedCategory === cat) {
