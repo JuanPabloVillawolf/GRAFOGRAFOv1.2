@@ -40,7 +40,7 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
   const doc = new jsPDF();
   const now = new Date();
   const dateStr = now.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = now.toLocaleTimeString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit' });
   
   const colors = {
     espresso: [44, 24, 16] as [number, number, number],
@@ -116,6 +116,13 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
 
   y = (doc as any).lastAutoTable.finalY + 10;
 
+  const parseAmount = (val: string): number => {
+    if (!val) return 0;
+    const clean = val.toString().replace(/[^0-9.-]/g, '');
+    const parsed = parseFloat(clean);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   // --- 2. MÉTODOS DE PAGO ---
   doc.setFont('times', 'bold');
   doc.setFontSize(13);
@@ -124,13 +131,44 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
 
   const paymentBreakdown: Record<string, number> = {};
   todaySales.forEach(sale => {
-    const rawMethods = sale.paymentMethod.split('+').map(m => m.trim());
-    const splitAmount = sale.amount / rawMethods.length;
+    const methodStr = sale.paymentMethod || 'Efectivo';
     
-    rawMethods.forEach(m => {
-      const normalized = normalizeMethod(m);
-      paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + splitAmount;
-    });
+    // Check if it's a split payment string: "Method: $120.00 + Method: $30.00"
+    if (methodStr.includes(' + ') && methodStr.includes(':')) {
+      const parts = methodStr.split(' + ');
+      
+      // Calculate total in the string to get proportions
+      let totalInString = 0;
+      const parsedParts = parts.map(part => {
+        const colonIndex = part.indexOf(':');
+        if (colonIndex !== -1) {
+          const method = part.substring(0, colonIndex).trim();
+          const amountStr = part.substring(colonIndex + 1).trim();
+          const amount = parseAmount(amountStr);
+          totalInString += amount;
+          return { method, amount };
+        }
+        return { method: part.trim(), amount: 0 };
+      });
+
+      // Distribute sale.amount based on proportions
+      parsedParts.forEach(part => {
+        const proportion = totalInString > 0 ? part.amount / totalInString : 0;
+        const distributedAmount = sale.amount * proportion;
+        const normalized = normalizeMethod(part.method);
+        paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + distributedAmount;
+      });
+    } else {
+      // Single method, but might have ": $amount" suffix
+      let method = methodStr;
+      if (methodStr.includes(':')) {
+        const colonIndex = methodStr.indexOf(':');
+        method = methodStr.substring(0, colonIndex).trim();
+      }
+
+      const normalized = normalizeMethod(method);
+      paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + sale.amount;
+    }
   });
 
   autoTable(doc, {
@@ -212,6 +250,7 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
       type: 'INGRESO',
       concept: s.productName,
       category: s.category,
+      user: s.username || '---',
       amount: s.amount,
       color: [21, 128, 61]
     })),
@@ -220,6 +259,7 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
       type: 'GASTO',
       concept: e.description,
       category: e.category,
+      user: e.username || '---',
       amount: -e.amount,
       color: [185, 28, 28]
     }))
@@ -227,29 +267,30 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
 
   autoTable(doc, {
     startY: y,
-    head: [['Hora', 'Tipo', 'Concepto', 'Categoría', 'Monto']],
+    head: [['Hora', 'Tipo', 'Concepto', 'Categoría', 'Usuario', 'Monto']],
     body: allMovements.map(m => [
       m.time,
       m.type,
       m.concept,
       m.category,
+      m.user,
       formatCurrency(m.amount)
     ]),
     headStyles: { fillColor: colors.espresso },
     alternateRowStyles: { fillColor: colors.cream },
     styles: { fontSize: 8 },
     columnStyles: { 
-      4: { halign: 'right', fontStyle: 'bold' }
+      5: { halign: 'right', fontStyle: 'bold' }
     },
     didParseCell: (data) => {
-      if (data.section === 'head' && data.column.index === 4) {
+      if (data.section === 'head' && data.column.index === 5) {
         data.cell.styles.halign = 'right';
       }
       if (data.section === 'body' && data.column.index === 1) {
         if (data.cell.raw === 'INGRESO') data.cell.styles.textColor = [21, 128, 61];
         if (data.cell.raw === 'GASTO') data.cell.styles.textColor = [185, 28, 28];
       }
-      if (data.section === 'body' && data.column.index === 4) {
+      if (data.section === 'body' && data.column.index === 5) {
         const val = data.cell.raw as string;
         if (val.includes('-')) data.cell.styles.textColor = [185, 28, 28];
         else data.cell.styles.textColor = [21, 128, 61];

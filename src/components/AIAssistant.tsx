@@ -119,7 +119,7 @@ export function AIAssistant({ sales, products }: AIAssistantProps) {
                     </div>
                   </div>
                   <div className={`text-[10px] text-dust px-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {msg.timestamp.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>

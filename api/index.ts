@@ -259,7 +259,7 @@ app.post("/api/sheets/cash-fund", async (req, res) => {
   try {
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-    const now = new Date().toLocaleString('es-MX');
+    const now = new Date().toLocaleString('es-MX', { hour12: false });
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,

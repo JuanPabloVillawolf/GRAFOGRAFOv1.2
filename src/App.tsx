@@ -309,7 +309,7 @@ export default function App() {
       const finalName = customerName.trim();
       const normalizedFinalName = finalName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-      const now = new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const now = new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
       
       setPendingAccounts(prev => {
         // Find existing account in the latest state
@@ -378,7 +378,7 @@ export default function App() {
     const amount = totalAmount !== undefined ? totalAmount : (paymentMethod === 'Gratis' ? 0 : product.price * quantity);
     const newSale: Sale = {
       id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       productName: product.name,
       category: product.category,
       amount,
@@ -435,7 +435,7 @@ export default function App() {
   const handlePayPendingAccount = async (account: PendingAccount, sessionPayments: { method: string, amount: number }[]) => {
     if (!googleTokens || !templateId || !currentUser) return;
 
-    const now = new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const now = new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
     const totalAccount = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const previousPaid = account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
     const sessionTotal = sessionPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -531,19 +531,35 @@ export default function App() {
     }
   };
 
+  const getAutoIcon = (category: string): string => {
+    const cat = category.toLowerCase();
+    if (cat.includes('libro') || cat.includes('book') || cat.includes('librería')) return 'library';
+    if (cat.includes('café') || cat.includes('coffee') || cat.includes('chai') || cat.includes('té') || cat.includes('te')) return 'coffee';
+    if (cat.includes('soda') || cat.includes('refresco')) return 'soda';
+    if (cat.includes('bebida') || cat.includes('drink')) return 'drink';
+    if (cat.includes('nieve') || cat.includes('ice') || cat.includes('helado')) return 'ice-cream';
+    if (cat.includes('snack') || cat.includes('cookie') || cat.includes('panadería')) return 'cookie';
+    if (cat.includes('alimento') || cat.includes('food') || cat.includes('utensils')) return 'food';
+    if (cat.includes('evento') || cat.includes('ticket')) return 'ticket';
+    if (cat.includes('vino') || cat.includes('wine')) return 'wine';
+    if (cat.includes('regalo') || cat.includes('gift') || cat.includes('accesorio') || cat.includes('bazar')) return 'gift';
+    return 'sparkles';
+  };
+
   const handleAddProduct = async (product: Omit<Product, 'id'>) => {
     if (!googleTokens || !templateId || !currentUser) return;
 
     const newProduct: Product = {
       ...product,
       id: Math.random().toString(36).substr(2, 9),
+      icon: product.icon || getAutoIcon(product.category)
     };
 
     // Optimistic update
     setProducts([...products, newProduct]);
 
     const newMovement: InventoryMovement = {
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false }),
       productId: newProduct.id,
       productName: newProduct.name,
       type: "Alta de Producto",
@@ -577,9 +593,12 @@ export default function App() {
     setProducts(products.map(p => p.id === productId ? { ...p, stock: p.stock + adjustment } : p));
 
     const product = products.find(p => p.id === productId);
+    let iconToSync = "";
+    
     if (product) {
+      iconToSync = product.icon || getAutoIcon(product.category);
       const newMovement: InventoryMovement = {
-        timestamp: new Date().toLocaleString(),
+        timestamp: new Date().toLocaleString('es-MX', { hour12: false }),
         productId,
         productName: product.name,
         type: adjustment > 0 ? "Entrada" : "Ajuste/Salida",
@@ -599,9 +618,10 @@ export default function App() {
           tokens: googleTokens, 
           spreadsheetId: templateId, 
           productId, 
-          adjustment,
+          adjustment, 
           notes,
-          username: currentUser.username
+          icon: iconToSync,
+          username: currentUser.username 
         }),
       });
     } catch (error) {
@@ -615,7 +635,7 @@ export default function App() {
     const newExpense: Expense = {
       ...expenseData,
       id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleString('es-MX'),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false }),
       username: currentUser.username
     };
 
@@ -687,33 +707,6 @@ export default function App() {
       setTestResult({ success: false, message: 'Error de red al conectar.' });
     } finally {
       setIsTesting(false);
-    }
-  };
-
-  const handleCleanupSalesCategories = async () => {
-    if (!googleTokens || !templateId) return;
-    
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/sheets/sales/cleanup-categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          tokens: googleTokens, 
-          spreadsheetId: templateId 
-        }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        alert(`Limpieza completada. Se eliminaron ${result.removedCount} registros de venta con categorías no existentes.`);
-        fetchData();
-      } else {
-        alert('Error al limpiar categorías: ' + result.error);
-      }
-    } catch (error) {
-      alert('Error de red al intentar limpiar categorías.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -836,7 +829,7 @@ export default function App() {
               )}
               {!isSyncing && lastSyncTime && (
                 <span className="hidden md:inline text-[9px] text-dust font-medium">
-                  Sincronizado: {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  Sincronizado: {lastSyncTime.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
               <button 
@@ -879,7 +872,6 @@ export default function App() {
               sales={sales} 
               products={products} 
               expenses={expenses} 
-              onCleanupCategories={currentUser?.role === 'admin' ? handleCleanupSalesCategories : undefined}
             />
           )}
           {activeView === 'gastos' && (

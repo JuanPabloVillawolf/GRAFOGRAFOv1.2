@@ -1,7 +1,27 @@
 import { useState } from 'react';
 import { Product } from '../types';
 import { cn } from '../lib/utils';
-import { Book, Coffee, Cookie, IceCream, ChevronDown, ChevronUp, Search, Plus, Save } from 'lucide-react';
+import { 
+  Library, 
+  Coffee, 
+  GlassWater, 
+  IceCream, 
+  Cookie, 
+  Utensils, 
+  Gift, 
+  Ticket, 
+  Wine, 
+  Sparkles,
+  ChevronDown, 
+  ChevronUp, 
+  Search, 
+  Plus, 
+  Save,
+  BookOpen,
+  CupSoda,
+  ShoppingBag,
+  Beer
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface InventoryProps {
@@ -11,12 +31,113 @@ interface InventoryProps {
 }
 
 const CATEGORY_STYLES: Record<string, { icon: any, color: string, bg: string, border: string, text: string }> = {
-  'Libros': { icon: Book, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
-  'Café': { icon: Coffee, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
-  'Nieve': { icon: IceCream, color: 'bg-gold', bg: 'bg-gold/10', border: 'border-gold/20', text: 'text-gold' },
-  'Snacks': { icon: Cookie, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
-  'Accesorios': { icon: Plus, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
-  'Otros': { icon: Save, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust' },
+  'Libros': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Books': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Librería': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Café': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
+  'Coffee': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
+  'Bebidas': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Drinks': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Nieve': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
+  'Ice Cream': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
+  'Helados': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
+  'Snacks': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Cookies': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Alimentos': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Food': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Accesorios': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Regalos': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Gifts': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Bazar': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Eventos': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
+  'Events': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
+  'Vinos': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Wine': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Otros': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Other': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+};
+
+const ICON_MAP: Record<string, any> = {
+  'library': Library,
+  'librería': Library,
+  'book': BookOpen,
+  'books': BookOpen,
+  'libro': BookOpen,
+  'libros': BookOpen,
+  'coffee': Coffee,
+  'cafe': Coffee,
+  'café': Coffee,
+  'taza': Coffee,
+  'chai': Coffee,
+  'té': Coffee,
+  'te': Coffee,
+  'drink': GlassWater,
+  'drinks': GlassWater,
+  'bebida': GlassWater,
+  'bebidas': GlassWater,
+  'vaso': GlassWater,
+  'cup': GlassWater,
+  'copa': GlassWater,
+  'soda': CupSoda,
+  'refresco': CupSoda,
+  'popote': CupSoda,
+  'ice-cream': IceCream,
+  'icecream': IceCream,
+  'nieve': IceCream,
+  'helado': IceCream,
+  'postre': IceCream,
+  'shopping': ShoppingBag,
+  'bag': ShoppingBag,
+  'bolsa': ShoppingBag,
+  'merch': ShoppingBag,
+  'cookie': Cookie,
+  'cookies': Cookie,
+  'snack': Cookie,
+  'snacks': Cookie,
+  'panadería': Cookie,
+  'galleta': Cookie,
+  'bread': Cookie,
+  'pan': Cookie,
+  'food': Utensils,
+  'alimento': Utensils,
+  'alimentos': Utensils,
+  'comida': Utensils,
+  'plato': Utensils,
+  'utensils': Utensils,
+  'gift': Gift,
+  'regalo': Gift,
+  'regalos': Gift,
+  'bazar': ShoppingBag,
+  'detalle': Gift,
+  'ticket': Ticket,
+  'event': Ticket,
+  'evento': Ticket,
+  'bolete': Ticket,
+  'entrada': Ticket,
+  'wine': Wine,
+  'vino': Wine,
+  'vinos': Wine,
+  'alcohol': Wine,
+  'beer': Beer,
+  'cerveza': Beer,
+  'sparkles': Sparkles,
+  'otros': Sparkles,
+  'otro': Sparkles,
+  'estrella': Sparkles,
+};
+
+const getProductIcon = (iconName: string | undefined, category: string) => {
+  if (iconName) {
+    const normalized = iconName.trim().toLowerCase();
+    if (ICON_MAP[normalized]) return ICON_MAP[normalized];
+  }
+  return getCategoryStyle(category).icon;
+};
+
+const getCategoryStyle = (cat: string) => {
+  const normalized = cat.trim().toLowerCase();
+  const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
+  return CATEGORY_STYLES[key || 'Otros'];
 };
 
 export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryProps) {
@@ -81,9 +202,12 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
       ...newProduct,
       category: category as any,
       icon: category === 'Libros' ? 'book' : 
-            category === 'Café' ? 'coffee' : 
+            (category === 'Café' || category === 'Bebidas') ? 'coffee' : 
             category === 'Nieve' ? 'ice-cream' : 
-            category === 'Snacks' ? 'cookie' : 'sparkles'
+            (category === 'Snacks' || category === 'Alimentos') ? 'cookie' : 
+            (category === 'Eventos') ? 'ticket' : 
+            (category === 'Accesorios' || category === 'Regalos' || category === 'Bazar') ? 'gift' : 
+            category === 'Vinos' ? 'wine' : 'sparkles'
     });
     setShowAddModal(false);
     setNewProduct({
@@ -148,18 +272,18 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                     id={`product-search-${product.id}`}
                     className={cn(
                       "w-full p-4 border rounded-xl flex items-center justify-between transition-all",
-                      CATEGORY_STYLES[product.category]?.bg || 'bg-white',
-                      CATEGORY_STYLES[product.category]?.border || 'border-parchment'
+                      getCategoryStyle(product.category).bg,
+                      getCategoryStyle(product.category).border
                     )}
                   >
                     <div className="flex items-center gap-3 text-left">
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                        CATEGORY_STYLES[product.category]?.color || 'bg-dust',
+                        getCategoryStyle(product.category).color,
                         "text-white"
                       )}>
                         {(() => {
-                          const Icon = CATEGORY_STYLES[product.category]?.icon || Coffee;
+                          const Icon = getProductIcon(product.icon, product.category);
                           return <Icon size={16} />;
                         })()}
                       </div>
@@ -193,8 +317,12 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {categories.map((cat) => {
-              const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES['Otros'];
-              const Icon = style.icon;
+              const style = getCategoryStyle(cat);
+              // Find the first product in this category to use its icon
+              const firstProduct = products.find(p => p.category === cat);
+              const Icon = firstProduct 
+                ? getProductIcon(firstProduct.icon, firstProduct.category)
+                : style.icon;
               const catProducts = products.filter(p => p.category === cat);
               const isExpanded = expandedCategory === cat;
 
@@ -237,12 +365,34 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                                   className={cn(
                                     "w-full p-4 border rounded-xl flex items-center justify-between transition-all",
                                     style.bg,
-                                    style.border
+                                    product.stock <= 5 
+                                      ? "border-red-500 border-2 shadow-lg shadow-red-500/20 ring-2 ring-red-500/10" 
+                                      : style.border
                                   )}
                                 >
-                                  <div className="text-left">
-                                    <div className="text-xs font-medium text-ink">{product.name}</div>
-                                    <div className="text-[10px] text-dust uppercase tracking-wider">Actual: {product.stock}</div>
+                                  <div className="flex items-center gap-3 text-left">
+                                    <div className={cn(
+                                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform",
+                                      product.stock <= 5 ? "bg-red-500 scale-110 shadow-md" : getCategoryStyle(product.category).color,
+                                      "text-white"
+                                    )}>
+                                      {(() => {
+                                        const StyledIcon = getProductIcon(product.icon, product.category);
+                                        return <StyledIcon size={product.stock <= 5 ? 18 : 14} />;
+                                      })()}
+                                    </div>
+                                    <div>
+                                      <div className={cn(
+                                        "text-xs font-medium transition-colors",
+                                        product.stock <= 5 ? "text-red-600 font-bold" : "text-ink"
+                                      )}>{product.name}</div>
+                                      <div className={cn(
+                                        "text-[10px] uppercase tracking-wider",
+                                        product.stock <= 5 ? "text-red-500 font-bold" : "text-dust"
+                                      )}>
+                                        ⚠️ Stock Crítico: {product.stock}
+                                      </div>
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <input 
@@ -378,6 +528,21 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                       onChange={(e) => setNewProduct({...newProduct, stock: parseInt(e.target.value)})}
                       className="w-full bg-cream border border-mist rounded-xl py-2 px-4 text-sm outline-none focus:border-bark"
                     />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">Icono (Ej. book, coffee, food)</label>
+                    <div className="relative">
+                      <input 
+                        list="icon-list"
+                        value={newProduct.icon}
+                        onChange={(e) => setNewProduct({...newProduct, icon: e.target.value})}
+                        className="w-full bg-cream border border-mist rounded-xl py-2 px-4 text-sm outline-none focus:border-bark"
+                        placeholder="Ej. coffee"
+                      />
+                      <datalist id="icon-list">
+                        {Object.keys(ICON_MAP).map(icon => <option key={icon} value={icon} />)}
+                      </datalist>
+                    </div>
                   </div>
                 </div>
               </div>

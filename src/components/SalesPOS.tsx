@@ -1,7 +1,33 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Product, Sale, PendingAccount } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
-import { Book, Coffee, Leaf, Cookie, IceCream, Theater, ChevronDown, ChevronUp, Search, ShoppingCart, Receipt, Plus, Minus, Trash2, User, X } from 'lucide-react';
+import { 
+  Library, 
+  Coffee, 
+  GlassWater, 
+  IceCream, 
+  Cookie, 
+  Utensils, 
+  Gift, 
+  Ticket, 
+  Wine, 
+  Sparkles,
+  ChevronDown, 
+  ChevronUp, 
+  Search, 
+  ShoppingCart, 
+  Receipt, 
+  Plus, 
+  Minus, 
+  Trash2, 
+  User, 
+  X,
+  BookOpen,
+  CupSoda,
+  ShoppingBag,
+  Beer,
+  Settings
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CartItem {
@@ -19,16 +45,118 @@ interface SalesPOSProps {
 }
 
 const CATEGORY_STYLES: Record<string, { icon: any, color: string, bg: string, border: string, text: string }> = {
-  'Libros': { icon: Book, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
-  'Café': { icon: Coffee, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
-  'Nieve': { icon: IceCream, color: 'bg-gold', bg: 'bg-gold/10', border: 'border-gold/20', text: 'text-gold' },
-  'Snacks': { icon: Cookie, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
-  'Accesorios': { icon: Plus, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
-  'Otros': { icon: Leaf, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust' },
+  'Libros': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Books': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Librería': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Café': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
+  'Coffee': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
+  'Bebidas': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Drinks': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Nieve': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
+  'Ice Cream': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
+  'Helados': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
+  'Snacks': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Cookies': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
+  'Alimentos': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Food': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Accesorios': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Regalos': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Gifts': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Bazar': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Eventos': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
+  'Events': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
+  'Vinos': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Wine': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
+  'Otros': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Other': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+};
+
+const ICON_MAP: Record<string, any> = {
+  'library': Library,
+  'librería': Library,
+  'book': BookOpen,
+  'books': BookOpen,
+  'libro': BookOpen,
+  'libros': BookOpen,
+  'coffee': Coffee,
+  'cafe': Coffee,
+  'café': Coffee,
+  'taza': Coffee,
+  'chai': Coffee,
+  'té': Coffee,
+  'te': Coffee,
+  'drink': GlassWater,
+  'drinks': GlassWater,
+  'bebida': GlassWater,
+  'bebidas': GlassWater,
+  'vaso': GlassWater,
+  'cup': GlassWater,
+  'copa': GlassWater,
+  'soda': CupSoda,
+  'refresco': CupSoda,
+  'popote': CupSoda,
+  'ice-cream': IceCream,
+  'icecream': IceCream,
+  'nieve': IceCream,
+  'helado': IceCream,
+  'postre': IceCream,
+  'shopping': ShoppingBag,
+  'bag': ShoppingBag,
+  'bolsa': ShoppingBag,
+  'merch': ShoppingBag,
+  'cookie': Cookie,
+  'cookies': Cookie,
+  'snack': Cookie,
+  'snacks': Cookie,
+  'panadería': Cookie,
+  'galleta': Cookie,
+  'bread': Cookie,
+  'pan': Cookie,
+  'food': Utensils,
+  'alimento': Utensils,
+  'alimentos': Utensils,
+  'comida': Utensils,
+  'plato': Utensils,
+  'utensils': Utensils,
+  'gift': Gift,
+  'regalo': Gift,
+  'regalos': Gift,
+  'bazar': ShoppingBag,
+  'detalle': Gift,
+  'ticket': Ticket,
+  'event': Ticket,
+  'evento': Ticket,
+  'bolete': Ticket,
+  'entrada': Ticket,
+  'wine': Wine,
+  'vino': Wine,
+  'vinos': Wine,
+  'alcohol': Wine,
+  'beer': Beer,
+  'cerveza': Beer,
+  'sparkles': Sparkles,
+  'otros': Sparkles,
+  'otro': Sparkles,
+  'estrella': Sparkles,
+};
+
+const getCategoryStyle = (cat: string) => {
+  const normalized = cat.trim().toLowerCase();
+  const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
+  return CATEGORY_STYLES[key || 'Otros'];
+};
+
+const getProductIcon = (iconName: string | undefined, category: string) => {
+  if (iconName) {
+    const normalized = iconName.trim().toLowerCase();
+    if (ICON_MAP[normalized]) return ICON_MAP[normalized];
+  }
+  return getCategoryStyle(category).icon;
 };
 
 export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePendingAccount, onCancelPending }: SalesPOSProps) {
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customItem, setCustomItem] = useState({ name: '', price: 0 });
@@ -37,11 +165,26 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
   const [payments, setPayments] = useState<{ method: string, amount: number }[]>([]);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
+  const [isQuickMenuEnabled, setIsQuickMenuEnabled] = useState(true);
   const [showMobileCart, setShowMobileCart] = useState(false);
 
   const cartTotal = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   }, [cart]);
+
+  const topProductsList = useMemo(() => {
+    // Only consider sales from the last 30 days for "trending" or overall for "frequent"
+    // Let's do overall frequency since the prompt says "most frequent"
+    const frequencyMap: Record<string, number> = {};
+    sales.forEach(sale => {
+      frequencyMap[sale.productName] = (frequencyMap[sale.productName] || 0) + sale.quantity;
+    });
+
+    return products
+      .filter(p => frequencyMap[p.name] > 0 && p.stock > 0)
+      .sort((a, b) => (frequencyMap[b.name] || 0) - (frequencyMap[a.name] || 0))
+      .slice(0, 4);
+  }, [sales, products]);
 
   useEffect(() => {
     if (activePendingAccount) {
@@ -54,11 +197,8 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
   const categories = [...new Set(products.map(p => p.category))];
 
   const toggleCategory = (cat: string) => {
-    if (expandedCategory === cat) {
-      setExpandedCategory(null);
-    } else {
-      setExpandedCategory(cat);
-    }
+    setSelectedCategoryName(cat);
+    setShowCategoryModal(true);
   };
 
   const handleAddToCart = (product: Product) => {
@@ -113,22 +253,25 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
     setShowPaymentModal(true);
   };
 
+  const parseAmount = (val: string): number => {
+    if (!val) return 0;
+    // Remove everything EXCEPT digits, dots and minus sign
+    const clean = val.toString().replace(/[^0-9.-]/g, '');
+    const parsed = parseFloat(clean);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const addPayment = (method: string) => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    const amount = parseAmount(paymentAmount);
+    if (amount <= 0) return;
 
-    const totalToPay = cartTotal;
-    const currentPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const remaining = totalToPay - currentPaid;
-
-    // Limit amount to remaining
-    const actualAmount = Math.min(amount, remaining);
-
-    setPayments([...payments, { method, amount: actualAmount }]);
+    const newPayments = [...payments, { method, amount }];
+    setPayments(newPayments);
     
     // Update payment amount for next part
-    const newRemaining = remaining - actualAmount;
-    setPaymentAmount(newRemaining > 0 ? newRemaining.toString() : '');
+    const totalPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
+    const remaining = cartTotal - totalPaid;
+    setPaymentAmount(remaining > 0 ? remaining.toFixed(2) : '');
   };
 
   const removePayment = (index: number) => {
@@ -274,13 +417,68 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
             >
               <Plus size={20} />
             </button>
+            <label className="flex items-center gap-2 px-3 py-2 bg-white border border-mist rounded-xl cursor-pointer hover:border-parchment transition-colors group">
+              <div className="relative flex items-center justify-center">
+                <input 
+                  type="checkbox" 
+                  checked={isQuickMenuEnabled}
+                  onChange={() => setIsQuickMenuEnabled(!isQuickMenuEnabled)}
+                  className="peer appearance-none w-5 h-5 border-2 border-mist rounded-md checked:bg-gold checked:border-gold transition-all cursor-pointer"
+                />
+                <Sparkles 
+                  size={10} 
+                  className={cn(
+                    "absolute transition-opacity pointer-events-none",
+                    isQuickMenuEnabled ? "text-espresso opacity-100" : "text-dust opacity-0"
+                  )} 
+                />
+              </div>
+              <span className="text-[10px] font-bold text-dust uppercase tracking-widest group-hover:text-espresso whitespace-nowrap">
+                Frecuentes
+              </span>
+            </label>
           </div>
+
+          {/* Quick Menu */}
+          {isQuickMenuEnabled && topProductsList.length > 0 && !searchTerm && (
+            <div className="space-y-3 pb-2">
+              <div className="flex items-center gap-2 px-1">
+                <div className="w-5 h-5 bg-gold/20 rounded flex items-center justify-center">
+                  <Sparkles size={12} className="text-gold" />
+                </div>
+                <h4 className="text-[10px] font-bold text-dust uppercase tracking-widest">Lo más vendido</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pb-2">
+                {topProductsList.map((product) => {
+                  const style = getCategoryStyle(product.category);
+                  const Icon = getProductIcon(product.icon, product.category);
+                  return (
+                    <motion.button
+                      key={`quick-${product.id}`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleAddToCart(product)}
+                      className="flex items-center gap-3 p-3 bg-white border border-parchment rounded-xl hover:border-gold transition-all shadow-sm text-left group"
+                    >
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", style.bg, style.text)}>
+                        <Icon size={20} />
+                      </div>
+                      <div className="min-w-0 pr-1">
+                        <p className="text-[11px] font-bold text-espresso truncate leading-tight mb-0.5">{product.name}</p>
+                        <p className="text-[10px] text-bark font-bold">{formatCurrency(product.price)}</p>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="min-h-[400px]">
             {searchTerm ? (
               <div className="space-y-4">
                 <div className="text-[10px] uppercase tracking-widest text-dust font-bold">Resultados de búsqueda</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {products
                     .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                     .sort((a, b) => {
@@ -306,19 +504,19 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
                         disabled={product.stock <= 0}
                         className={cn(
                           "p-4 border rounded-xl flex items-center justify-between transition-all group disabled:opacity-50 text-left",
-                          CATEGORY_STYLES[product.category]?.bg || 'bg-white',
-                          CATEGORY_STYLES[product.category]?.border || 'border-parchment',
+                          getCategoryStyle(product.category).bg,
+                          getCategoryStyle(product.category).border,
                           "hover:shadow-md"
                         )}
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                            CATEGORY_STYLES[product.category]?.color || 'bg-dust',
+                            getCategoryStyle(product.category).color,
                             "text-white"
                           )}>
                             {(() => {
-                              const Icon = CATEGORY_STYLES[product.category]?.icon || Coffee;
+                              const Icon = getProductIcon(product.icon, product.category);
                               return <Icon size={16} />;
                             })()}
                           </div>
@@ -343,73 +541,33 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {categories.map((cat) => {
-                  const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES['Otros'];
-                  const Icon = style.icon;
-                  const catProducts = products.filter(p => p.category === cat);
-                  const isExpanded = expandedCategory === cat;
+                  const style = getCategoryStyle(cat);
+                  // Find the first product in this category to use its icon
+                  const firstProduct = products.find(p => p.category === cat);
+                  const Icon = firstProduct 
+                    ? getProductIcon(firstProduct.icon, firstProduct.category)
+                    : style.icon;
 
                   return (
                     <div key={cat} className="space-y-2">
                       <button
                         onClick={() => toggleCategory(cat)}
                         className={cn(
-                          "w-full p-6 rounded-2xl border transition-all flex flex-col items-center gap-3 group",
-                          isExpanded 
-                            ? "bg-espresso border-espresso text-cream shadow-lg" 
-                            : cn("bg-white border-parchment text-espresso hover:border-bark", style.bg.replace('bg-', 'hover:bg-').replace('/10', '/5'))
+                          "w-full p-6 rounded-2xl border transition-all flex flex-col items-center gap-3 group bg-white border-parchment text-espresso hover:border-bark shadow-sm hover:shadow-md",
+                          style.bg.replace('bg-', 'hover:bg-').replace('/15', '/20')
                         )}
                       >
                         <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
-                          isExpanded ? "bg-gold/20 text-gold" : cn(style.bg, style.text)
+                          "w-14 h-14 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110",
+                          style.bg, style.text,
+                          "shadow-inner"
                         )}>
-                          <Icon size={28} />
+                          <Icon size={32} />
                         </div>
-                        <span className="font-serif text-sm font-semibold">{cat}</span>
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} className="opacity-50" />}
+                        <span className="font-serif text-sm font-semibold tracking-wide">{cat}</span>
                       </button>
-
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="overflow-hidden space-y-4 pt-2"
-                          >
-                          {(() => {
-                            return (
-                              <div className="grid grid-cols-1 gap-2">
-                                {catProducts.map((product, index) => (
-                                  <button
-                                    key={`${product.id}-${index}`}
-                                    id={`pos-product-${product.id}`}
-                                    onClick={() => handleAddToCart(product)}
-                                    disabled={product.stock <= 0}
-                                    className={cn(
-                                      "w-full p-4 border rounded-xl flex items-center justify-between transition-all group disabled:opacity-50",
-                                      style.bg,
-                                      style.border,
-                                      "hover:shadow-sm"
-                                    )}
-                                  >
-                                    <div className="text-left">
-                                      <div className="text-xs font-medium text-ink">{product.name}</div>
-                                      <div className="text-[10px] text-dust uppercase tracking-wider">Stock: {product.stock}</div>
-                                    </div>
-                                    <div className="font-serif text-sm font-semibold text-espresso group-hover:text-bark">
-                                      {formatCurrency(product.price)}
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                            );
-                          })()}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                     </div>
                   );
                 })}
@@ -535,12 +693,16 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
       {/* Custom Item Modal */}
       <AnimatePresence>
         {showCustomModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm cursor-pointer"
+            onClick={() => setShowCustomModal(false)}
+          >
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden cursor-default"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 border-b border-mist">
                 <h3 className="font-serif text-lg text-espresso">Producto Extra</h3>
@@ -591,12 +753,19 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
       {/* Payment Method Modal */}
       <AnimatePresence>
         {showPaymentModal && cart.length > 0 && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm cursor-pointer"
+            onClick={() => {
+              setShowPaymentModal(false);
+              setPayments([]);
+            }}
+          >
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden cursor-default"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 border-b border-mist text-center">
                 <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-1">Confirmar Venta</div>
@@ -753,6 +922,116 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
                   className="text-xs font-medium text-dust hover:text-espresso text-center"
                 >
                   Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Category Products Modal */}
+      <AnimatePresence>
+        {showCategoryModal && selectedCategoryName && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cursor-pointer"
+            onClick={() => setShowCategoryModal(false)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={cn(
+                "p-6 flex items-center justify-between border-b shrink-0",
+                getCategoryStyle(selectedCategoryName).bg,
+                getCategoryStyle(selectedCategoryName).border
+              )}>
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center",
+                    getCategoryStyle(selectedCategoryName).color,
+                    "text-white"
+                  )}>
+                    {(() => {
+                      const Icon = getCategoryStyle(selectedCategoryName).icon;
+                      return <Icon size={24} />;
+                    })()}
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-xl text-espresso">{selectedCategoryName}</h3>
+                    <p className="text-xs text-dust">Productos disponibles en esta categoría</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowCategoryModal(false)}
+                  className="p-2 hover:bg-black/5 rounded-full transition-colors text-dust hover:text-espresso"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {products
+                    .filter(p => p.category === selectedCategoryName)
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((product, index) => (
+                      <button
+                        key={`${product.id}-${index}`}
+                        id={`pos-modal-product-${product.id}`}
+                        onClick={() => {
+                          handleAddToCart(product);
+                        }}
+                        disabled={product.stock <= 0}
+                        className={cn(
+                          "p-4 border rounded-2xl flex items-center justify-between transition-all group disabled:opacity-50 text-left",
+                          getCategoryStyle(product.category).bg,
+                          getCategoryStyle(product.category).border,
+                          "hover:shadow-md hover:bg-white"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                            getCategoryStyle(product.category).color,
+                            "text-white"
+                          )}>
+                            {(() => {
+                              const Icon = getProductIcon(product.icon, product.category);
+                              return <Icon size={20} />;
+                            })()}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-ink">{product.name}</div>
+                            <div className="text-[10px] text-dust font-medium">Stock: {product.stock}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-serif text-sm font-bold text-espresso group-hover:text-bark">
+                            {formatCurrency(product.price)}
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  }
+                </div>
+                {products.filter(p => p.category === selectedCategoryName).length === 0 && (
+                  <div className="text-center py-20 text-dust italic text-sm">
+                    No hay productos en esta categoría.
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-cream border-t border-parchment flex justify-between items-center shrink-0">
+                <div className="text-xs text-dust">
+                  {products.filter(p => p.category === selectedCategoryName).length} Productos
+                </div>
+                <button 
+                  onClick={() => setShowCategoryModal(false)}
+                  className="px-8 py-2.5 bg-espresso text-cream rounded-xl font-bold text-xs hover:bg-bark transition-colors shadow-lg shadow-espresso/20"
+                >
+                  Cerrar
                 </button>
               </div>
             </motion.div>

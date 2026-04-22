@@ -36,7 +36,7 @@ export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, on
       onUpdateAccount({
         ...account,
         items: newItems,
-        updatedAt: new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+        updatedAt: new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
       });
     }
   };
@@ -51,7 +51,7 @@ export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, on
       onUpdateAccount({
         ...account,
         items: newItems,
-        updatedAt: new Date().toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+        updatedAt: new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
       });
     }
   };

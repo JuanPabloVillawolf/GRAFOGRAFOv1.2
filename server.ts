@@ -299,7 +299,7 @@ async function startServer() {
     try {
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-      const now = new Date().toLocaleString('es-MX');
+      const now = new Date().toLocaleString('es-MX', { hour12: false });
 
       await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -407,7 +407,7 @@ async function startServer() {
           valueInputOption: "USER_ENTERED",
           requestBody: {
             values: [[
-              new Date().toLocaleString(),
+              new Date().toLocaleString('es-MX', { hour12: false }),
               productId,
               sale.productName,
               "Salida (Venta)",
@@ -429,12 +429,12 @@ async function startServer() {
 
   // 5. Update Stock
   app.post("/api/sheets/inventory/update", async (req, res) => {
-    const { tokens, spreadsheetId, productId, adjustment, notes } = req.body;
+    const { tokens, spreadsheetId, productId, adjustment, notes, icon } = req.body;
     try {
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
-      const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
+      const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:F" });
       const inventoryRows = inventoryRes.data.values || [];
       const rowIndex = inventoryRows.findIndex((row, idx) => {
         const id = row[0] || `row-${idx + 2}`;
@@ -445,11 +445,12 @@ async function startServer() {
         const currentStock = parseInt(inventoryRows[rowIndex][4]) || 0;
         const newStock = currentStock + adjustment;
         
+        // Update both stock (E) and icon (F)
         await sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `Inventario!E${rowIndex + 2}`,
+          range: `Inventario!E${rowIndex + 2}:F${rowIndex + 2}`,
           valueInputOption: "RAW",
-          requestBody: { values: [[newStock]] }
+          requestBody: { values: [[newStock, icon || inventoryRows[rowIndex][5] || ""]] }
         });
 
         await sheets.spreadsheets.values.append({
@@ -458,7 +459,7 @@ async function startServer() {
           valueInputOption: "USER_ENTERED",
           requestBody: {
             values: [[
-              new Date().toLocaleString(),
+              new Date().toLocaleString('es-MX', { hour12: false }),
               productId,
               inventoryRows[rowIndex][1],
               adjustment > 0 ? "Entrada" : "Ajuste/Salida",
@@ -505,7 +506,7 @@ async function startServer() {
         valueInputOption: "USER_ENTERED",
         requestBody: {
           values: [[
-            new Date().toLocaleString(),
+            new Date().toLocaleString('es-MX', { hour12: false }),
             product.id,
             product.name,
             "Alta de Producto",
@@ -661,75 +662,6 @@ async function startServer() {
       res.json({ success: true, url: spreadsheetUrl });
     } catch (error: any) {
       console.error("Error exporting to sheets:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 9. Cleanup Sales Categories
-  app.post("/api/sheets/sales/cleanup-categories", async (req, res) => {
-    const { tokens, spreadsheetId } = req.body;
-    if (!tokens || !spreadsheetId) {
-      return res.status(400).json({ error: "Faltan tokens o ID de hoja" });
-    }
-
-    try {
-      oauth2Client.setCredentials(tokens);
-      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-
-      // 1. Get all categories from Inventario
-      const inventoryRes = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Inventario!C2:C",
-      });
-      const inventoryCategories = new Set(
-        (inventoryRes.data.values || [])
-          .map(row => row[0])
-          .filter(Boolean)
-          .map(c => c.trim().toLowerCase())
-      );
-
-      // 2. Get all sales
-      const salesRes = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Ventas!A1:I",
-      });
-      const salesRows = salesRes.data.values || [];
-      if (salesRows.length <= 1) {
-        return res.json({ success: true, message: "No hay ventas para limpiar" });
-      }
-
-      const headers = salesRows[0];
-      const dataRows = salesRows.slice(1);
-
-      // 3. Filter sales where category exists in inventory
-      const filteredSales = dataRows.filter(row => {
-        const category = row[3]; // Ventas Column D (index 3) is Categoría
-        if (!category) return true; // Keep if no category? Or delete? User said if category not found, delete.
-        const normalizedCategory = category.trim().toLowerCase();
-        return inventoryCategories.has(normalizedCategory);
-      });
-
-      // 4. Overwrite Ventas sheet
-      await sheets.spreadsheets.values.clear({
-        spreadsheetId,
-        range: "Ventas!A2:Z",
-      });
-
-      if (filteredSales.length > 0) {
-        await sheets.spreadsheets.values.update({
-          spreadsheetId,
-          range: "Ventas!A2",
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: filteredSales }
-        });
-      }
-
-      res.json({ 
-        success: true, 
-        removedCount: dataRows.length - filteredSales.length 
-      });
-    } catch (error: any) {
-      console.error("Error cleaning up sales categories:", error);
       res.status(500).json({ error: error.message });
     }
   });

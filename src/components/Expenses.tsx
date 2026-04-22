@@ -1,6 +1,21 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Receipt, Plus, Search, Calendar, User, Tag, DollarSign, FileText, Trash2, AlertCircle } from 'lucide-react';
+import { 
+  Receipt, 
+  Plus, 
+  Search, 
+  Calendar, 
+  Tag, 
+  DollarSign, 
+  FileText, 
+  AlertCircle,
+  Zap,
+  Utensils,
+  PenTool,
+  Wrench,
+  Sparkles,
+  User
+} from 'lucide-react';
 import { Expense } from '../types';
 import { cn } from '../lib/utils';
 
@@ -22,15 +37,57 @@ export function Expenses({ expenses, onAddExpense, isLoading }: ExpensesProps) {
 
   const categories = ['General', 'Servicios', 'Comida', 'Papelería', 'Mantenimiento', 'Otros'];
 
-  const filteredExpenses = expenses.filter(e => 
-    e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.notes.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Colors aligned with Grafógrafo aesthetic
+  const CATEGORY_COLORS: Record<string, string> = {
+    'General': '#5c544e', // Espresso/Bark
+    'Servicios': '#8c4b2f', // Terra
+    'Comida': '#a68b5c', // Gold
+    'Papelería': '#8c9c84', // Sage
+    'Mantenimiento': '#adaba6', // Dust
+    'Otros': '#403d39' // Ink
+  };
+
+  const CATEGORY_ICONS: Record<string, any> = {
+    'General': Receipt,
+    'Servicios': Zap,
+    'Comida': Utensils,
+    'Papelería': PenTool,
+    'Mantenimiento': Wrench,
+    'Otros': Sparkles
+  };
+  const todayStr = new Date().toLocaleDateString('es-MX');
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(e => 
+      e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.notes.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [expenses, searchTerm]);
+
+  const groups = useMemo(() => {
+    const grouped: Record<string, Expense[]> = {};
+    
+    filteredExpenses.forEach(expense => {
+      const date = expense.timestamp.split(' ')[0];
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(expense);
+    });
+    
+    return Object.entries(grouped).sort((a, b) => {
+      const partsA = a[0].split('/');
+      const partsB = b[0].split('/');
+      const dateA = new Date(parseInt(partsA[2]), parseInt(partsA[1]) - 1, parseInt(partsA[0]));
+      const dateB = new Date(parseInt(partsB[2]), parseInt(partsB[1]) - 1, parseInt(partsB[0]));
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [filteredExpenses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseFloat(newExpense.amount);
+    // Clean string from currency symbols and thousands separators before parsing
+    const cleanAmount = newExpense.amount.replace(/[^0-9.-]/g, '');
+    const amount = parseFloat(cleanAmount);
     if (isNaN(amount) || amount <= 0) return;
 
     await onAddExpense({
@@ -92,76 +149,112 @@ export function Expenses({ expenses, onAddExpense, isLoading }: ExpensesProps) {
         </div>
       </div>
 
-      {/* Expenses Table */}
-      <div className="bg-white rounded-3xl border border-mist shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-parchment/50 border-b border-mist">
-                <th className="px-6 py-4 text-[10px] font-bold text-dust uppercase tracking-widest">Fecha / Hora</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-dust uppercase tracking-widest">Concepto</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-dust uppercase tracking-widest">Categoría</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-dust uppercase tracking-widest">Usuario</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-dust uppercase tracking-widest text-right">Monto</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-mist">
-              {filteredExpenses.length > 0 ? (
-                filteredExpenses.map((expense) => (
-                  <motion.tr 
-                    layout
-                    key={expense.id}
-                    className="hover:bg-parchment/30 transition-colors group"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-dust">
-                        <Calendar size={14} />
-                        <span className="text-xs font-medium">{expense.timestamp}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-espresso">{expense.description}</p>
-                        {expense.notes && (
-                          <p className="text-[10px] text-dust italic flex items-center gap-1">
-                            <FileText size={10} />
-                            {expense.notes}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-parchment border border-mist text-[10px] font-bold text-dust uppercase">
-                        <Tag size={10} />
-                        {expense.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-dust">
-                        <User size={14} />
-                        <span className="text-xs">{expense.username}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="text-sm font-bold text-red-600">
-                        -${expense.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                      </span>
-                    </td>
-                  </motion.tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center gap-2 text-dust">
-                      <AlertCircle size={32} strokeWidth={1.5} />
-                      <p className="text-sm">No se encontraron registros de gastos.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Expenses History Container */}
+
+      {/* Day Navigation Controls (Top) - REMOVED from here to move to bottom like others */}
+
+      {/* Expenses History Container */}
+      <div className="bg-white rounded-3xl border border-mist shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+        {/* Container Header */}
+        <div className="bg-parchment/50 px-6 py-4 border-b border-mist flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h3 className="font-serif text-base text-espresso flex items-center gap-2">
+              <Receipt size={18} />
+              Historial de Gastos
+            </h3>
+          </div>
+          {searchTerm ? (
+            <span className="text-[10px] uppercase tracking-widest text-dust font-bold">
+              Mostrando {groups.reduce((acc, g) => acc + g[1].length, 0)} resultados de búsqueda
+            </span>
+          ) : (
+             <span className="text-[10px] uppercase tracking-widest text-dust font-bold">
+              {groups[0]?.[1]?.length || 0} movimientos
+            </span>
+          )}
         </div>
+
+        {/* Grouped Content */}
+        <div className="flex-1 overflow-auto">
+          {groups.length > 0 ? (
+            <div className="divide-y divide-mist">
+              {groups.map(([date, dateExpenses]) => {
+                const dateTotal = dateExpenses.reduce((sum, e) => sum + e.amount, 0);
+                const isToday = date === todayStr;
+                
+                return (
+                  <div key={date} className="relative">
+                    {/* Sticky Daily Header within the scroll container */}
+                    <div className="sticky top-0 z-10 bg-cream/80 backdrop-blur-sm px-6 py-2 border-b border-mist flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-bark uppercase tracking-[0.2em]">
+                        {isToday ? 'HOY' : date} • {dateTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <tbody className="divide-y divide-mist/50">
+                          {dateExpenses.map((expense) => (
+                            <motion.tr 
+                              layout
+                              key={expense.id}
+                              className="hover:bg-parchment/30 transition-colors group"
+                            >
+                              <td className="px-6 py-4 w-28 shrink-0">
+                                <span className="text-[10px] font-bold text-dust uppercase tracking-widest">
+                                  {expense.timestamp.split(' ')[1]}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="space-y-1">
+                                  <p className="text-sm font-bold text-espresso">{expense.description}</p>
+                                  {expense.notes && (
+                                    <p className="text-[10px] text-dust italic flex items-center gap-1">
+                                      <FileText size={10} />
+                                      {expense.notes}
+                                    </p>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                {(() => {
+                                  const Icon = CATEGORY_ICONS[expense.category] || Tag;
+                                  return (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-parchment border border-mist text-[10px] font-bold text-dust uppercase">
+                                      <Icon size={10} />
+                                      {expense.category}
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-1.5 text-dust">
+                                  <User size={12} />
+                                  <span className="text-[10px] font-medium">{expense.username}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <span className="text-sm font-bold text-red-600">
+                                  -${expense.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                </span>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-dust p-12">
+              <AlertCircle size={32} strokeWidth={1.5} />
+              <p className="text-sm mt-2">No se encontraron registros de gastos.</p>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Add Expense Modal */}
