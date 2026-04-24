@@ -9,7 +9,7 @@ import { PendingAccounts } from './components/PendingAccounts';
 import { Login } from './components/Login';
 import { CashFundModal } from './components/CashFundModal';
 import { Expenses } from './components/Expenses';
-import { Sale, Product, InventoryMovement, PendingAccount, Expense, CashLog } from './types';
+import { Sale, Product, Event, InventoryMovement, PendingAccount, Expense, CashLog } from './types';
 import { Settings, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatCurrency } from './lib/utils';
@@ -635,7 +635,9 @@ export default function App() {
     if (cat.includes('nieve') || cat.includes('ice') || cat.includes('helado')) return 'ice-cream';
     if (cat.includes('snack') || cat.includes('cookie') || cat.includes('panadería')) return 'cookie';
     if (cat.includes('alimento') || cat.includes('food') || cat.includes('utensils')) return 'food';
+    if (cat.includes('evento') || cat.includes('ticket')) return 'ticket';
     if (cat.includes('vino') || cat.includes('wine')) return 'wine';
+    if (cat.includes('regalo') || cat.includes('gift') || cat.includes('accesorio') || cat.includes('bazar')) return 'gift';
     return 'sparkles';
   };
 

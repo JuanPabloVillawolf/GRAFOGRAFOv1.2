@@ -122,51 +122,52 @@ const ICON_MAP: Record<string, any> = {
 };
 
 const CATEGORY_STYLES: Record<string, { icon: any, color: string, bg: string, border: string, text: string, hex: string }> = {
-  'Libros': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark', hex: '#8B6F47' },
-  'Librería': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark', hex: '#8B6F47' },
-  'Books': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark', hex: '#8B6F47' },
-  'Café': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso', hex: '#2C1A0E' },
-  'Cafetería': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso', hex: '#2C1A0E' },
-  'Coffee': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso', hex: '#2C1A0E' },
-  'Bebidas': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Drinks': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Soda': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Nieve': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage', hex: '#6B7B5E' },
-  'Helados': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage', hex: '#6B7B5E' },
-  'Ice Cream': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage', hex: '#6B7B5E' },
-  'Snacks': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark', hex: '#8B6F47' },
-  'Cookies': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark', hex: '#8B6F47' },
-  'Postres': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark', hex: '#8B6F47' },
-  'Alimentos': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Comida': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Food': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Vinos': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Wine': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Otros': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust', hex: '#9E8E7A' },
-  'Other': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust', hex: '#9E8E7A' },
-  'General': { icon: Receipt, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust', hex: '#9E8E7A' },
-  'Servicios': { icon: Zap, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra', hex: '#C4622D' },
-  'Papelería': { icon: PenTool, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage', hex: '#6B7B5E' },
-  'Mantenimiento': { icon: Wrench, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark', hex: '#8B6F47' },
+  'Libros': { icon: Library, color: 'bg-dust/10', bg: 'bg-bark/5', border: 'border-bark/10', text: 'text-dust', hex: '#8B6F47' },
+  'Books': { icon: Library, color: 'bg-dust/10', bg: 'bg-bark/5', border: 'border-bark/10', text: 'text-dust', hex: '#8B6F47' },
+  'Librería': { icon: Library, color: 'bg-dust/10', bg: 'bg-bark/5', border: 'border-bark/10', text: 'text-dust', hex: '#8B6F47' },
+  'Café': { icon: Coffee, color: 'bg-dust/10', bg: 'bg-espresso/5', border: 'border-espresso/10', text: 'text-dust', hex: '#2C1A0E' },
+  'Coffee': { icon: Coffee, color: 'bg-dust/10', bg: 'bg-espresso/5', border: 'border-espresso/10', text: 'text-dust', hex: '#2C1A0E' },
+  'Bebidas': { icon: CupSoda, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Drinks': { icon: CupSoda, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Nieve': { icon: IceCream, color: 'bg-dust/10', bg: 'bg-sage/5', border: 'border-sage/10', text: 'text-dust', hex: '#6B7B5E' },
+  'Ice Cream': { icon: IceCream, color: 'bg-dust/10', bg: 'bg-sage/5', border: 'border-sage/10', text: 'text-dust', hex: '#6B7B5E' },
+  'Helados': { icon: IceCream, color: 'bg-dust/10', bg: 'bg-sage/5', border: 'border-sage/10', text: 'text-dust', hex: '#6B7B5E' },
+  'Snacks': { icon: Cookie, color: 'bg-dust/10', bg: 'bg-bark/5', border: 'border-bark/10', text: 'text-dust', hex: '#8B6F47' },
+  'Cookies': { icon: Cookie, color: 'bg-dust/10', bg: 'bg-bark/5', border: 'border-bark/10', text: 'text-dust', hex: '#8B6F47' },
+  'Alimentos': { icon: Utensils, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Food': { icon: Utensils, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Accesorios': { icon: ShoppingBag, color: 'bg-dust/10', bg: 'bg-dust/5', border: 'border-dust/10', text: 'text-dust', hex: '#9E8E7A' },
+  'Regalos': { icon: ShoppingBag, color: 'bg-dust/10', bg: 'bg-dust/5', border: 'border-dust/10', text: 'text-dust', hex: '#9E8E7A' },
+  'Gifts': { icon: ShoppingBag, color: 'bg-dust/10', bg: 'bg-dust/5', border: 'border-dust/10', text: 'text-dust', hex: '#9E8E7A' },
+  'Bazar': { icon: ShoppingBag, color: 'bg-dust/10', bg: 'bg-dust/5', border: 'border-dust/10', text: 'text-dust', hex: '#9E8E7A' },
+  'Eventos': { icon: Ticket, color: 'bg-dust/10', bg: 'bg-gold/5', border: 'border-gold/10', text: 'text-dust', hex: '#D4A843' },
+  'Events': { icon: Ticket, color: 'bg-dust/10', bg: 'bg-gold/5', border: 'border-gold/10', text: 'text-dust', hex: '#D4A843' },
+  'Vinos': { icon: Wine, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Wine': { icon: Wine, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Otros': { icon: Sparkles, color: 'bg-dust/10', bg: 'bg-dust/5', border: 'border-dust/10', text: 'text-dust', hex: '#9E8E7A' },
+  'Other': { icon: Sparkles, color: 'bg-dust/10', bg: 'bg-dust/5', border: 'border-dust/10', text: 'text-dust', hex: '#9E8E7A' },
+  'General': { icon: Receipt, color: 'bg-dust/10', bg: 'bg-dust/5', border: 'border-dust/10', text: 'text-dust', hex: '#9E8E7A' },
+  'Servicios': { icon: Zap, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Comida': { icon: Utensils, color: 'bg-dust/10', bg: 'bg-terra/5', border: 'border-terra/10', text: 'text-dust', hex: '#C4622D' },
+  'Papelería': { icon: PenTool, color: 'bg-dust/10', bg: 'bg-sage/5', border: 'border-sage/10', text: 'text-dust', hex: '#6B7B5E' },
+  'Mantenimiento': { icon: Wrench, color: 'bg-dust/10', bg: 'bg-bark/5', border: 'border-bark/10', text: 'text-dust', hex: '#8B6F47' },
 };
 
 const EXPENSE_CATEGORY_STYLES: Record<string, { icon: any, hex: string }> = {
-  'General': { icon: Receipt, hex: '#9E8E7A' },
-  'Servicios': { icon: Zap, hex: '#C4622D' },
-  'Comida': { icon: Utensils, hex: '#C4622D' },
-  'Papelería': { icon: PenTool, hex: '#6B7B5E' },
-  'Mantenimiento': { icon: Wrench, hex: '#8B6F47' },
-  'Otros': { icon: Sparkles, hex: '#9E8E7A' },
-  'Insumos': { icon: Library, hex: '#8B6F47' },
-  'Limpieza': { icon: Sparkles, hex: '#9E8E7A' },
-  'Publicidad': { icon: Gift, hex: '#D4A843' }
+  'General': { icon: Receipt, hex: '#A89F91' },
+  'Servicios': { icon: Zap, hex: '#3C2A21' },
+  'Comida': { icon: Utensils, hex: '#D27C5A' },
+  'Papelería': { icon: PenTool, hex: '#87986A' },
+  'Mantenimiento': { icon: Wrench, hex: '#634832' },
+  'Otros': { icon: Sparkles, hex: '#403d39' },
+  'Insumos': { icon: Library, hex: '#634832' },
+  'Limpieza': { icon: Sparkles, hex: '#A89F91' },
+  'Publicidad': { icon: Gift, hex: '#C5A059' }
 };
 
 const getCategoryStyle = (cat: string) => {
-  const normalized = cat.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const key = Object.keys(CATEGORY_STYLES).find(k => 
-    k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === normalized
-  );
+  const normalized = cat.trim().toLowerCase();
+  const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
   return CATEGORY_STYLES[key || 'Otros'];
 };
 

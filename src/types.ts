@@ -1,9 +1,9 @@
-export type Category = 'Libros' | 'Bebidas' | 'Snacks' | 'Otros';
+export type Category = 'Libros' | 'Bebidas' | 'Snacks' | 'Eventos' | 'Otros';
 
 export interface Product {
   id: string;
   name: string;
-  category: string;
+  category: Category;
   price: number;
   stock: number;
   icon: string;
@@ -13,11 +13,22 @@ export interface Sale {
   id: string;
   timestamp: string;
   productName: string;
-  category: string;
+  category: Category;
   amount: number;
   quantity: number;
   paymentMethod: string;
   username: string;
+}
+
+export interface Event {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  capacity: number;
+  confirmed: number;
+  price: number;
+  type: 'Cultural' | 'Maridaje';
 }
 
 export interface PendingAccount {
@@ -28,7 +39,7 @@ export interface PendingAccount {
     productName: string;
     price: number;
     quantity: number;
-    category: string;
+    category: Category;
   }[];
   payments?: {
     method: string;
