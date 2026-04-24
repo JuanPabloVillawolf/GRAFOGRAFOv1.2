@@ -21,7 +21,8 @@ import {
   BookOpen,
   CupSoda,
   ShoppingBag,
-  Beer
+  Beer,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -32,30 +33,28 @@ interface InventoryProps {
 }
 
 const CATEGORY_STYLES: Record<string, { icon: any, color: string, bg: string, border: string, text: string }> = {
-  'Libros': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Books': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Librería': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Café': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
-  'Coffee': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
-  'Bebidas': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Drinks': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Nieve': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
-  'Ice Cream': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
-  'Helados': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
-  'Snacks': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Cookies': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Alimentos': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Food': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Accesorios': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Regalos': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Gifts': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Bazar': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Eventos': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
-  'Events': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
-  'Vinos': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Wine': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Otros': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Other': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Libros': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Librería': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Books': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Café': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso' },
+  'Cafetería': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso' },
+  'Coffee': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso' },
+  'Bebidas': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Drinks': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Soda': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Nieve': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
+  'Helados': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
+  'Ice Cream': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
+  'Snacks': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Cookies': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Postres': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Alimentos': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Comida': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Food': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Vinos': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Wine': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Otros': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust' },
+  'Other': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust' },
 };
 
 const ICON_MAP: Record<string, any> = {
@@ -136,8 +135,10 @@ const getProductIcon = (iconName: string | undefined, category: string) => {
 };
 
 const getCategoryStyle = (cat: string) => {
-  const normalized = cat.trim().toLowerCase();
-  const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
+  const normalized = cat.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const key = Object.keys(CATEGORY_STYLES).find(k => 
+    k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === normalized
+  );
   return CATEGORY_STYLES[key || 'Otros'];
 };
 
@@ -206,8 +207,6 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
             (category === 'Café' || category === 'Bebidas') ? 'coffee' : 
             category === 'Nieve' ? 'ice-cream' : 
             (category === 'Snacks' || category === 'Alimentos') ? 'cookie' : 
-            (category === 'Eventos') ? 'ticket' : 
-            (category === 'Accesorios' || category === 'Regalos' || category === 'Bazar') ? 'gift' : 
             category === 'Vinos' ? 'wine' : 'sparkles'
     });
     setShowAddModal(false);
@@ -255,7 +254,7 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                   <h4 className="text-[10px] font-bold text-dust uppercase tracking-[0.2em]">Resultados de búsqueda</h4>
                   <button onClick={() => setSearchTerm('')} className="text-[10px] font-bold text-gold uppercase hover:underline">Limpiar</button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {products
                     .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                     .map((product, index) => {
@@ -269,8 +268,8 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                         )}>
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <div className={cn(
-                              "w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 shrink-0",
-                              isCritical ? "bg-red-500 text-white" : cn(style.bg, style.text)
+                              "w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 shrink-0 shadow-sm",
+                              isCritical ? "bg-red-500 text-white" : cn(style.color, "text-white")
                             )}>
                               <Icon size={20} />
                             </div>
@@ -308,7 +307,7 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {categories.map((cat) => {
                   const style = getCategoryStyle(cat);
                   const firstProduct = products.find(p => p.category === cat);
@@ -323,17 +322,16 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                       key={cat}
                       onClick={() => setExpandedCategory(cat)}
                       className={cn(
-                        "w-full aspect-square p-4 rounded-[2.5rem] border transition-all flex flex-col items-center justify-center gap-4 group bg-white border-parchment text-espresso hover:border-gold shadow-sm hover:shadow-2xl hover:-translate-y-1",
-                        style.bg.replace('bg-', 'hover:bg-').replace('/15', '/20')
+                        "w-full aspect-square p-4 rounded-[2rem] border transition-all flex flex-col items-center justify-center gap-4 group bg-white border-parchment text-espresso hover:border-gold shadow-sm hover:shadow-xl hover:-translate-y-1",
+                        style.bg.replace('bg-', 'hover:bg-').replace('/10', '/20')
                       )}
                     >
                       <div className="relative">
                         <div className={cn(
-                          "w-20 h-20 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110",
-                          style.bg, style.text,
-                          "shadow-inner"
+                          "w-16 h-16 sm:w-20 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3 shadow-sm",
+                          style.color, "text-white"
                         )}>
-                          <Icon size={40} />
+                          <Icon size={32} className="sm:size-10" />
                         </div>
                         {criticalCount > 0 && (
                           <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-bounce">
@@ -342,9 +340,9 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                         )}
                       </div>
                       <div className="text-center space-y-1">
-                        <span className="font-serif text-base font-bold tracking-tight block">{cat}</span>
-                        <span className="text-[10px] text-dust font-bold uppercase tracking-widest">
-                          {catProducts.length} productos
+                        <span className="font-serif text-sm sm:text-base font-bold tracking-tight block truncate w-full px-1">{cat}</span>
+                        <span className="text-[10px] text-dust font-bold uppercase tracking-widest hidden sm:block">
+                          {catProducts.length} items
                         </span>
                       </div>
                     </button>
@@ -440,19 +438,23 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
       {/* Category Products Modal */}
       <AnimatePresence>
         {expandedCategory && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cursor-pointer"
+            onClick={() => setExpandedCategory(null)}
+          >
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl w-full max-w-5xl overflow-hidden h-full max-h-[92vh] md:max-h-[85vh] flex flex-col"
+              className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl w-full max-w-5xl overflow-hidden h-full max-h-[92vh] md:max-h-[85vh] flex flex-col cursor-default"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="px-6 md:px-10 py-5 md:py-8 border-b border-parchment flex items-center justify-between bg-cream/50">
                 <div className="flex items-center gap-4 md:gap-6">
                   <div className={cn(
                     "w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.5rem] flex items-center justify-center shadow-lg",
-                    getCategoryStyle(expandedCategory).bg,
-                    getCategoryStyle(expandedCategory).text
+                    getCategoryStyle(expandedCategory).color,
+                    "text-white"
                   )}>
                     {(() => {
                       const firstP = products.find(p => p.category === expandedCategory);
@@ -467,16 +469,10 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                     </p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setExpandedCategory(null)}
-                  className="p-2 md:p-3 hover:bg-espresso/5 rounded-full text-dust hover:text-espresso transition-all"
-                >
-                  <ChevronDown size={24} className="md:size-[32px]" />
-                </button>
               </div>
 
               <div className="flex-1 overflow-auto p-4 md:p-10 bg-cream/5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                   {products
                     .filter(p => p.category === expandedCategory)
                     .map((product, index) => {
@@ -491,9 +487,9 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                           <div className="flex items-center gap-3 md:gap-5 min-w-0 flex-1">
                             <div className={cn(
                                "w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110",
-                               isCritical ? "bg-red-500 text-white shadow-lg" : cn(style.bg, style.text)
+                               isCritical ? "bg-red-500 text-white shadow-lg" : cn(style.color, "text-white shadow-md")
                             )}>
-                              <Icon size={20} className="md:size-[28px]" />
+                              <Icon size={20} className="md:size-7" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="text-xs md:text-base font-bold text-espresso truncate">{product.name}</div>
@@ -594,12 +590,16 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
       {/* Add Product Modal */}
       <AnimatePresence>
         {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm cursor-pointer"
+            onClick={() => setShowAddModal(false)}
+          >
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-parchment"
+              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-parchment cursor-default"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="px-8 py-6 border-b border-parchment flex items-center justify-between bg-cream/50">
                 <div className="flex items-center gap-4">
@@ -611,12 +611,6 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                     <p className="text-xs text-dust">Ingresa los detalles para el catálogo de inventario.</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowAddModal(false)}
-                  className="p-2 hover:bg-espresso/5 rounded-full text-dust transition-colors"
-                >
-                  <ChevronDown size={24} />
-                </button>
               </div>
 
               <div className="p-8 space-y-6">

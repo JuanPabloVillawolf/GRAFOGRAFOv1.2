@@ -262,30 +262,28 @@ function CartView({
 }
 
 const CATEGORY_STYLES: Record<string, { icon: any, color: string, bg: string, border: string, text: string }> = {
-  'Libros': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Books': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Librería': { icon: Library, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Café': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
-  'Coffee': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/15', border: 'border-espresso/20', text: 'text-espresso' },
-  'Bebidas': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Drinks': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Nieve': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
-  'Ice Cream': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
-  'Helados': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/15', border: 'border-sage/20', text: 'text-sage' },
-  'Snacks': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Cookies': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/15', border: 'border-bark/20', text: 'text-bark' },
-  'Alimentos': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Food': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Accesorios': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Regalos': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Gifts': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Bazar': { icon: ShoppingBag, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Eventos': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
-  'Events': { icon: Ticket, color: 'bg-gold', bg: 'bg-gold/15', border: 'border-gold/20', text: 'text-gold' },
-  'Vinos': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Wine': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/15', border: 'border-terra/20', text: 'text-terra' },
-  'Otros': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
-  'Other': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/15', border: 'border-dust/20', text: 'text-dust' },
+  'Libros': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Librería': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Books': { icon: Library, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Café': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso' },
+  'Cafetería': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso' },
+  'Coffee': { icon: Coffee, color: 'bg-espresso', bg: 'bg-espresso/10', border: 'border-espresso/20', text: 'text-espresso' },
+  'Bebidas': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Drinks': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Soda': { icon: CupSoda, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Nieve': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
+  'Helados': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
+  'Ice Cream': { icon: IceCream, color: 'bg-sage', bg: 'bg-sage/10', border: 'border-sage/20', text: 'text-sage' },
+  'Snacks': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Cookies': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Postres': { icon: Cookie, color: 'bg-bark', bg: 'bg-bark/10', border: 'border-bark/20', text: 'text-bark' },
+  'Alimentos': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Comida': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Food': { icon: Utensils, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Vinos': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Wine': { icon: Wine, color: 'bg-terra', bg: 'bg-terra/10', border: 'border-terra/20', text: 'text-terra' },
+  'Otros': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust' },
+  'Other': { icon: Sparkles, color: 'bg-dust', bg: 'bg-dust/10', border: 'border-dust/20', text: 'text-dust' },
 };
 
 const ICON_MAP: Record<string, any> = {
@@ -358,8 +356,10 @@ const ICON_MAP: Record<string, any> = {
 };
 
 const getCategoryStyle = (cat: string) => {
-  const normalized = cat.trim().toLowerCase();
-  const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
+  const normalized = cat.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const key = Object.keys(CATEGORY_STYLES).find(k => 
+    k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === normalized
+  );
   return CATEGORY_STYLES[key || 'Otros'];
 };
 
@@ -573,7 +573,7 @@ export function SalesPOS({
             {searchTerm ? (
               <div className="space-y-4">
                 <div className="text-[10px] uppercase tracking-widest text-dust font-bold">Resultados de búsqueda</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {products
                     .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                     .sort((a, b) => {
@@ -606,7 +606,7 @@ export function SalesPOS({
                       >
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                           <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
                             getCategoryStyle(product.category).color,
                             "text-white"
                           )}>
@@ -651,13 +651,12 @@ export function SalesPOS({
                       onClick={() => toggleCategory(cat)}
                       className={cn(
                         "w-full aspect-square p-4 rounded-[2rem] border transition-all flex flex-col items-center justify-center gap-4 group bg-white border-parchment text-espresso hover:border-gold shadow-sm hover:shadow-xl hover:-translate-y-1",
-                        style.bg.replace('bg-', 'hover:bg-').replace('/15', '/20')
+                        style.bg.replace('bg-', 'hover:bg-').replace('/10', '/20')
                       )}
                     >
                       <div className={cn(
-                        "w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3",
-                        style.bg, style.text,
-                        "shadow-inner"
+                        "w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3 shadow-sm",
+                        style.color, "text-white"
                       )}>
                         <Icon size={36} className="sm:size-10" />
                       </div>
@@ -815,12 +814,6 @@ export function SalesPOS({
                         <p className="text-[10px] md:text-xs text-dust font-bold uppercase tracking-widest opacity-60">Catálogo de Productos</p>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => setShowCategoryModal(false)}
-                      className="md:hidden p-2 text-dust hover:text-espresso"
-                    >
-                      <X size={20} />
-                    </button>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-cream/10">
