@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PendingAccount } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
-import { Users, Clock, ChevronRight, Trash2, CreditCard, Edit2, Plus, Minus, X } from 'lucide-react';
+import { Users, Clock, ChevronRight, Trash2, CreditCard, Edit2, Plus, Minus, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface PendingAccountsProps {
@@ -15,6 +15,7 @@ interface PendingAccountsProps {
 export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, onPayAccount, onUpdateAccount }: PendingAccountsProps) {
   const [payingAccountId, setPayingAccountId] = useState<string | null>(null);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
   const [currentPayments, setCurrentPayments] = useState<{ method: string, amount: number }[]>([]);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
 
@@ -59,26 +60,17 @@ export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, on
   const handleStartPay = (account: PendingAccount) => {
     setPayingAccountId(account.id);
     setCurrentPayments([]);
-    const total = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const alreadyPaid = account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-    setPaymentAmount((total - alreadyPaid).toString());
   };
 
   const addPayment = (account: PendingAccount, method: string) => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) return;
-
     const total = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const alreadyPaid = account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
     const currentSessionPaid = currentPayments.reduce((sum, p) => sum + p.amount, 0);
     const remaining = total - alreadyPaid - currentSessionPaid;
 
-    const actualAmount = Math.min(amount, remaining);
-    if (actualAmount <= 0) return;
+    if (remaining <= 0) return;
 
-    setCurrentPayments([...currentPayments, { method, amount: actualAmount }]);
-    const newRemaining = remaining - actualAmount;
-    setPaymentAmount(newRemaining > 0 ? newRemaining.toString() : '');
+    setCurrentPayments([...currentPayments, { method, amount: remaining }]);
   };
 
   const removePayment = (index: number, account: PendingAccount) => {
@@ -120,87 +112,119 @@ export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, on
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-parchment rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white border border-parchment rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
             >
-              <div className="p-5 space-y-4">
+              <div className="p-5 flex-1 space-y-4">
                 <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-parchment rounded-full flex items-center justify-center text-bark">
+                  <button 
+                    onClick={() => setExpandedAccountId(expandedAccountId === account.id ? null : account.id)}
+                    className="flex items-center gap-3 text-left group"
+                  >
+                    <div className="w-10 h-10 bg-parchment rounded-full flex items-center justify-center text-bark group-hover:bg-gold/20 group-hover:text-gold transition-colors">
                       <Users size={20} />
                     </div>
                     <div>
-                      <h3 className="font-serif text-base text-espresso">{account.customerName}</h3>
+                      <h3 className="font-serif text-base text-espresso flex items-center gap-2">
+                        {account.customerName}
+                        <motion.div
+                          animate={{ rotate: expandedAccountId === account.id ? 180 : 0 }}
+                          className="text-dust"
+                        >
+                          <ChevronDown size={14} />
+                        </motion.div>
+                      </h3>
                       <div className="flex items-center gap-2 text-[10px] text-dust">
                         <Clock size={12} />
                         <span>Actualizada: {account.updatedAt}</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => editingAccountId === account.id ? setEditingAccountId(null) : setEditingAccountId(account.id)}
-                      className={cn(
-                        "p-2 rounded-full transition-colors",
-                        editingAccountId === account.id ? "bg-espresso text-cream" : "text-dust hover:text-espresso hover:bg-parchment"
-                      )}
-                      title="Editar productos"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => onDeleteAccount(account.id)}
-                      className="p-2 text-dust hover:text-red-500 transition-colors"
-                      title="Eliminar cuenta"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  </button>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="text-[10px] font-bold text-dust uppercase tracking-wider">Productos ({account.items.reduce((sum, item) => sum + item.quantity, 0)})</div>
-                  <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
-                    {account.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-[11px] text-ink group/item">
-                        <div className="flex items-center gap-2">
-                          {editingAccountId === account.id && (
-                            <div className="flex items-center gap-1 bg-parchment rounded-lg p-0.5">
-                              <button 
-                                onClick={() => handleUpdateItemQuantity(account, idx, -1)}
-                                className="p-0.5 hover:bg-white rounded text-dust"
-                              >
-                                <Minus size={10} />
-                              </button>
-                              <span className="w-4 text-center font-bold">{item.quantity}</span>
-                              <button 
-                                onClick={() => handleUpdateItemQuantity(account, idx, 1)}
-                                className="p-0.5 hover:bg-white rounded text-dust"
-                              >
-                                <Plus size={10} />
-                              </button>
-                            </div>
-                          )}
-                          {!editingAccountId || editingAccountId !== account.id ? (
-                            <span>{item.quantity}x {item.productName}</span>
-                          ) : (
-                            <span className="font-medium">{item.productName}</span>
-                          )}
+                <AnimatePresence>
+                  {expandedAccountId === account.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4 pt-2 overflow-hidden border-t border-parchment/50"
+                    >
+                      {/* Products Detail */}
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-bold text-dust uppercase tracking-wider flex justify-between">
+                          <span>Detalle de Consumo</span>
+                          <span>{account.items.reduce((sum, item) => sum + item.quantity, 0)} Items</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-dust">{formatCurrency(item.price * item.quantity)}</span>
-                          {editingAccountId === account.id && (
-                            <button 
-                              onClick={() => handleRemoveItem(account, idx)}
-                              className="text-red-400 hover:text-red-600 p-1"
-                            >
-                              <X size={12} />
-                            </button>
-                          )}
+                        <div className="space-y-2 pr-2">
+                          {account.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-[11px] text-ink py-2 border-b border-parchment/30 last:border-0 gap-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {editingAccountId === account.id && (
+                                  <div className="flex items-center bg-parchment rounded-lg p-0.5 shrink-0 shadow-inner">
+                                    <button 
+                                      onClick={() => handleUpdateItemQuantity(account, idx, -1)}
+                                      className="p-1 hover:bg-white rounded text-dust transition-colors shadow-sm"
+                                    >
+                                      <Minus size={10} />
+                                    </button>
+                                    <span className="min-w-[24px] text-center font-bold text-espresso">{item.quantity}</span>
+                                    <button 
+                                      onClick={() => handleUpdateItemQuantity(account, idx, 1)}
+                                      className="p-1 hover:bg-white rounded text-dust transition-colors shadow-sm"
+                                    >
+                                      <Plus size={10} />
+                                    </button>
+                                  </div>
+                                )}
+                                <span className="font-medium truncate">{item.productName}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="font-bold text-bark bg-bark/5 px-2 py-0.5 rounded-md border border-bark/10 whitespace-nowrap">
+                                  {formatCurrency(item.price * item.quantity)}
+                                </span>
+                                {editingAccountId === account.id && (
+                                  <button 
+                                    onClick={() => handleRemoveItem(account, idx)}
+                                    className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-full transition-colors"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
+
+                      {/* Previous Payments Detail */}
+                      {account.payments && account.payments.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <div className="text-[10px] font-bold text-dust uppercase tracking-wider">Historial de Pagos</div>
+                          <div className="space-y-1.5">
+                            {account.payments.map((p, idx) => (
+                              <div key={idx} className="flex justify-between items-center bg-cream/50 px-3 py-2 rounded-lg text-xs">
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-espresso">{p.method}</span>
+                                  <span className="text-[9px] text-dust italic">{p.timestamp}</span>
+                                </div>
+                                <span className="font-bold text-green-600">-{formatCurrency(p.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {!expandedAccountId || expandedAccountId !== account.id ? (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-bold text-dust uppercase tracking-wider">Resumen ({account.items.length} productos)</div>
+                    <p className="text-[11px] text-dust italic truncate">
+                      {account.items.map(i => `${i.quantity}x ${i.productName}`).join(', ')}
+                    </p>
                   </div>
-                </div>
+                ) : null}
 
                 <div className="pt-4 border-t border-parchment flex flex-col gap-3">
                   <div className="flex items-center justify-between">
@@ -263,33 +287,28 @@ export function PendingAccounts({ accounts, onSelectAccount, onDeleteAccount, on
                             </div>
                           )}
 
-                          {/* Payment Input */}
+                          {/* Payment Area */}
                           <div className="space-y-2">
-                            <div className="flex justify-between items-end">
-                              <label className="text-[10px] font-bold text-dust uppercase tracking-wider">Cantidad a abonar</label>
+                            <div className="flex justify-between items-end border-b border-parchment pb-2">
+                              <label className="text-[10px] font-bold text-dust uppercase tracking-wider">Metodo de Pago</label>
                               <span className="text-[10px] text-bark font-bold">
-                                Restante: {formatCurrency(
+                                Total a liquidar: {formatCurrency(
                                   account.items.reduce((sum, item) => sum + item.price * item.quantity, 0) - 
                                   (account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0) -
                                   currentPayments.reduce((sum, p) => sum + p.amount, 0)
                                 )}
                               </span>
                             </div>
-                            <input 
-                              type="number"
-                              value={paymentAmount}
-                              onChange={(e) => setPaymentAmount(e.target.value)}
-                              className="w-full bg-cream border border-mist rounded-xl py-2 px-3 text-sm outline-none focus:border-bark"
-                              placeholder="0.00"
-                            />
-                            <div className="grid grid-cols-3 gap-2">
+                            
+                            <div className="grid grid-cols-2 gap-2 pt-2">
                               {paymentMethods.map((method) => (
                                 <button
                                   key={method}
                                   onClick={() => addPayment(account, method)}
-                                  className="py-2 rounded-lg border border-mist text-[9px] font-bold uppercase tracking-wider hover:bg-parchment transition-colors"
+                                  className="py-3 px-4 bg-white border border-mist rounded-xl flex items-center justify-center gap-2 hover:bg-parchment transition-all group overflow-hidden relative shadow-sm"
                                 >
-                                  {method}
+                                  <div className="absolute inset-0 bg-gold/5 translate-y-full group-hover:translate-y-0 transition-transform" />
+                                  <span className="relative text-[10px] font-bold uppercase tracking-widest text-espresso">{method}</span>
                                 </button>
                               ))}
                             </div>

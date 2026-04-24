@@ -69,7 +69,8 @@ export function Expenses({ expenses, onAddExpense, isLoading }: ExpensesProps) {
     const grouped: Record<string, Expense[]> = {};
     
     filteredExpenses.forEach(expense => {
-      const date = expense.timestamp.split(' ')[0];
+      // Handle "DD/MM/YYYY, HH:MM:SS" or "DD/MM/YYYY HH:MM:SS"
+      const date = expense.timestamp.split(' ')[0].replace(',', '');
       if (!grouped[date]) grouped[date] = [];
       grouped[date].push(expense);
     });

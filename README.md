@@ -1,28 +1,29 @@
-# Coffee & Books POS - Digital Transformation Suite
+# ☕ Sistema de Gestión Grafógrafo - Suite de Transformación Digital
 
-Professional Point of Sale (POS) and Inventory Management System designed for the digital transformation of small businesses, specifically tailored for a Bookstore-Cafeteria hybrid model.
+Sistema profesional de Punto de Venta (POS) y Gestión de Inventario diseñado para la transformación digital de negocios híbridos, específicamente adaptado para el modelo de Librería-Cafetería Grafógrafo.
 
-## 🚀 Overview
+## 🚀 Vista General
 
-This application serves as a comprehensive management tool that transitions manual business processes into a streamlined digital workflow. By leveraging **Cloud Computing** and **Real-time Data Visualization**, it empowers business owners to make data-driven decisions without the overhead of expensive database infrastructure.
+Esta aplicación sirve como una herramienta integral de gestión que transiciona los procesos de negocio manuales hacia un flujo de trabajo digital optimizado. Utilizando **Google Sheets** como base de datos en la nube y **Visualización de Datos en Tiempo Real**, permite a los propietarios tomar decisiones basadas en evidencia sin los costos de infraestructura de bases de datos tradicionales.
 
-## ✨ Key Features
+## ✨ Características Principales
 
-- **Omnichannel POS Interface:** Optimized for fast-paced cafeteria service and detailed bookstore inventory management.
-- **Dynamic Inventory Control:** Real-time tracking of stock levels with automated alerts for critical items.
-- **Pending Accounts Management:** Secure tracking of customer credit and partial payments ("Cuentas Abiertas") with persistent cloud storage.
-- **Strategic Dashboard:** Interactive data visualization of sales trends, ticket averages, and category performance.
-- **Google Sheets Integration:** Uses Google Sheets as a robust, accessible, and cost-effective NoSQL backend.
-- **Secure Authentication:** Enterprise-grade security via Google OAuth 2.0.
+- **Interfaz POS Omnicanal:** Optimizada para un servicio rápido de cafetería y una gestión detallada de inventario de librería.
+- **Control de Inventario Dinámico:** Seguimiento en tiempo real de niveles de stock con alertas automáticas. Historial detallado de movimientos (entradas, salidas y ajustes).
+- **Gestión de Cuentas Pendientes (Abiertas):** Seguimiento seguro de abonos y consumos de clientes con **sincronización inmediata (eager sync)** a la nube para evitar pérdida de datos.
+- **Dashboard Estratégico:** Visualización interactiva de tendencias de ventas, ticket promedio y rendimiento por categorías.
+- **Integración con Google Sheets:** Utiliza la API de Google Sheets v4 como un backend NoSQL robusto, accesible y cost-efectivo.
+- **Estandarización de Zona Horaria:** Sincronización automática de todos los registros con la hora local de Ciudad de México (`America/Mexico_City`).
+- **Control de Gastos y Caja:** Módulo para registro de gastos operativos y seguimiento de fondo de caja diario.
 
 ## 🛠 Tech Stack
 
-- **Frontend:** React 18, Tailwind CSS, Lucide Icons, Framer Motion.
+- **Frontend:** React 18, Tailwind CSS, Lucide-React, Framer Motion (Animaciones).
 - **Backend:** Node.js, Express.
-- **Database:** Google Sheets API v4.
-- **Security:** OAuth 2.0.
+- **Base de Datos:** Google Sheets API v4.
+- **Seguridad:** Autenticación Google OAuth 2.0.
 
-## 📋 System Architecture
+## 📋 Arquitectura del Sistema
 
 The application follows a **Serverless-inspired architecture**:
 1. **Client Layer:** React SPA providing a responsive and intuitive user experience.

@@ -95,7 +95,7 @@ async function startServer() {
         { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
         { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
         { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] },
-        { title: "Cuentas", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)", "Estado"] }
+        { title: "Cuentas Pendientes", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)", "Estado"] }
       ];
 
       // Try to fetch data first (saves 1 read request if sheets exist)
@@ -206,7 +206,7 @@ async function startServer() {
         notes: row[4] || ""
       })).reverse();
 
-      const pendingAccounts = getSheetValues("Cuentas").map(row => {
+      const pendingAccounts = getSheetValues("Cuentas Pendientes").map(row => {
         let items = [];
         let payments = [];
         try {
@@ -299,7 +299,7 @@ async function startServer() {
     try {
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-      const now = new Date().toLocaleString('es-MX', { hour12: false });
+      const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' });
 
       await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -407,7 +407,7 @@ async function startServer() {
           valueInputOption: "USER_ENTERED",
           requestBody: {
             values: [[
-              new Date().toLocaleString('es-MX', { hour12: false }),
+              new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
               productId,
               sale.productName,
               "Salida (Venta)",
@@ -459,7 +459,7 @@ async function startServer() {
           valueInputOption: "USER_ENTERED",
           requestBody: {
             values: [[
-              new Date().toLocaleString('es-MX', { hour12: false }),
+              new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
               productId,
               inventoryRows[rowIndex][1],
               adjustment > 0 ? "Entrada" : "Ajuste/Salida",
@@ -545,7 +545,7 @@ async function startServer() {
         const spreadsheet = await sheets.spreadsheets.create({
           requestBody: {
             properties: {
-              title: title || `Reporte Grafógrafo - ${new Date().toLocaleDateString()}`,
+              title: title || `Reporte Grafógrafo - ${new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' })}`,
             },
           },
         });
@@ -677,11 +677,11 @@ async function startServer() {
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
-      // Overwrite the entire Cuentas sheet with the current state
+      // Overwrite the entire Cuentas Pendientes sheet with the current state
       // First, clear existing data (except headers)
       await sheets.spreadsheets.values.clear({
         spreadsheetId,
-        range: "Cuentas!A2:Z",
+        range: "Cuentas Pendientes!A2:Z",
       });
 
       if (accounts.length > 0) {
@@ -697,7 +697,7 @@ async function startServer() {
 
         await sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: "Cuentas!A2",
+          range: "Cuentas Pendientes!A2",
           valueInputOption: "USER_ENTERED",
           requestBody: { values }
         });

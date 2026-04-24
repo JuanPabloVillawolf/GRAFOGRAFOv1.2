@@ -23,6 +23,8 @@ export default function App() {
   const [cashLogs, setCashLogs] = useState<CashLog[]>([]);
   const [pendingAccounts, setPendingAccounts] = useState<PendingAccount[]>([]);
   const [activePendingAccount, setActivePendingAccount] = useState<PendingAccount | null>(null);
+  const [posCart, setPosCart] = useState<any[]>([]);
+  const [posCustomerName, setPosCustomerName] = useState('');
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -46,6 +48,32 @@ export default function App() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  const syncPendingAccounts = async (accountsToSync?: PendingAccount[]) => {
+    // CRITICAL: Only sync if data has been successfully loaded from the sheet first
+    // to avoid overwriting the sheet with an empty local state on startup
+    if (!googleTokens || !templateId || isAuthChecking || !isDataLoaded) return;
+    
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/sheets/pending-accounts/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tokens: googleTokens, 
+          spreadsheetId: templateId, 
+          accounts: accountsToSync || pendingAccounts 
+        }),
+      });
+      if (response.ok) {
+        setLastSyncTime(new Date());
+      }
+    } catch (error) {
+      console.error('Error syncing pending accounts:', error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('pos_user');
@@ -180,17 +208,18 @@ export default function App() {
       if (data.cashLogs) {
         setCashLogs(data.cashLogs);
         // Check if there's a "Fondo Inicial" for today in the server data
-        const now = new Date();
-        const day = String(now.getDate()).padStart(2, '0');
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const year = now.getFullYear();
-        const todayStr = `${day}/${month}/${year}`;
+        const mxDate = new Date().toLocaleString('es-MX', { 
+          timeZone: 'America/Mexico_City',
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric' 
+        });
+        const todayStr = mxDate.split(',')[0]; // "DD/MM/YYYY"
         
         const hasTodayFund = data.cashLogs.some((log: CashLog) => {
           if (log.type !== "Fondo Inicial") return false;
-          // Match formats like "13/04/2026", "13/4/2026", "2026-04-13" etc.
-          return log.timestamp.includes(todayStr) || 
-                 log.timestamp.includes(`${now.getDate()}/${now.getMonth() + 1}/${year}`);
+          // Match formats like "13/04/2026" or "13/4/2026"
+          return log.timestamp.includes(todayStr);
         });
 
         if (hasTodayFund) {
@@ -241,35 +270,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const syncPendingAccounts = async () => {
-      // CRITICAL: Only sync if data has been successfully loaded from the sheet first
-      // to avoid overwriting the sheet with an empty local state on startup
-      if (!googleTokens || !templateId || isAuthChecking || isLoading || !isDataLoaded) return;
-      
-      setIsSyncing(true);
-      try {
-        const response = await fetch('/api/sheets/pending-accounts/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            tokens: googleTokens, 
-            spreadsheetId: templateId, 
-            accounts: pendingAccounts 
-          }),
-        });
-        if (response.ok) {
-          setLastSyncTime(new Date());
-        }
-      } catch (error) {
-        console.error('Error syncing pending accounts:', error);
-      } finally {
-        setIsSyncing(false);
-      }
-    };
-
     const timer = setTimeout(() => {
       syncPendingAccounts();
-    }, 1000); // 1s debounce for stability
+    }, 2000); // Debounce for stability
 
     return () => clearTimeout(timer);
   }, [pendingAccounts, isDataLoaded, googleTokens, templateId]);
@@ -309,8 +312,9 @@ export default function App() {
       const finalName = customerName.trim();
       const normalizedFinalName = finalName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-      const now = new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
       
+      let updatedAccounts: PendingAccount[] = [];
       setPendingAccounts(prev => {
         // Find existing account in the latest state
         const existingAccount = activePendingAccount 
@@ -347,7 +351,8 @@ export default function App() {
             updatedAt: now,
             items: newItems
           };
-          return prev.map(a => a.id === updatedAccount.id ? updatedAccount : a);
+          updatedAccounts = prev.map(a => a.id === updatedAccount.id ? updatedAccount : a);
+          return updatedAccounts;
         } else {
           const newAccount: PendingAccount = {
             id: Math.random().toString(36).substr(2, 9),
@@ -363,9 +368,13 @@ export default function App() {
               category: product.category
             }]
           };
-          return [newAccount, ...prev];
+          updatedAccounts = [newAccount, ...prev];
+          return updatedAccounts;
         }
       });
+
+      // Eagerly sync to Google Sheets
+      syncPendingAccounts(updatedAccounts);
 
       // Clear active account and return to accounts list as requested
       setActivePendingAccount(null);
@@ -378,7 +387,7 @@ export default function App() {
     const amount = totalAmount !== undefined ? totalAmount : (paymentMethod === 'Gratis' ? 0 : product.price * quantity);
     const newSale: Sale = {
       id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       productName: product.name,
       category: product.category,
       amount,
@@ -422,7 +431,9 @@ export default function App() {
       } else {
         // If it was a pending account being closed, remove it
         if (activePendingAccount) {
-          setPendingAccounts(prev => prev.filter(a => a.id !== activePendingAccount.id));
+          const updated = pendingAccounts.filter(a => a.id !== activePendingAccount.id);
+          setPendingAccounts(updated);
+          syncPendingAccounts(updated);
           setActivePendingAccount(null);
         }
       }
@@ -432,10 +443,60 @@ export default function App() {
     }
   };
 
+  const handleUpdatePendingAccountItems = async (items: { product: Product, quantity: number }[]) => {
+    if (!googleTokens || !templateId || !currentUser || !activePendingAccount) return;
+
+    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    
+    // Calculate stock changes
+    // We need to compare old items vs new items to know the delta
+    const oldItems = activePendingAccount.items;
+    
+    setPendingAccounts(prev => {
+      const updatedAccount: PendingAccount = {
+        ...activePendingAccount,
+        updatedAt: now,
+        items: items.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+          category: item.product.category
+        }))
+      };
+      const updatedAccounts = prev.map(a => a.id === updatedAccount.id ? updatedAccount : a);
+      // Eagerly sync
+      syncPendingAccounts(updatedAccounts);
+      return updatedAccounts;
+    });
+
+    // We should ideally update stock here too, but for simplicity in this turn 
+    // and given current architecture, we'll let the next sync handle the reconciliation 
+    // or assume the user manages stock separately (as per current app behavior).
+    // Actually, let's at least update local stock for immediate feedback
+    setProducts(prev => {
+      const newProducts = [...prev];
+      // Revert old quantities
+      oldItems.forEach(item => {
+        const pIdx = newProducts.findIndex(p => p.id === item.productId);
+        if (pIdx > -1) newProducts[pIdx] = { ...newProducts[pIdx], stock: newProducts[pIdx].stock + item.quantity };
+      });
+      // Apply new quantities
+      items.forEach(item => {
+        const pIdx = newProducts.findIndex(p => p.id === item.product.id);
+        if (pIdx > -1) newProducts[pIdx] = { ...newProducts[pIdx], stock: newProducts[pIdx].stock - item.quantity };
+      });
+      return newProducts;
+    });
+
+    setActivePendingAccount(null);
+    setActiveView('cuentas');
+  };
+
   const handlePayPendingAccount = async (account: PendingAccount, sessionPayments: { method: string, amount: number }[]) => {
     if (!googleTokens || !templateId || !currentUser) return;
 
-    const now = new Date().toLocaleString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
     const totalAccount = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const previousPaid = account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
     const sessionTotal = sessionPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -478,17 +539,28 @@ export default function App() {
           });
         }
 
-        setPendingAccounts(prev => prev.map(a => a.id === account.id ? { ...a, status: 'Pagada', updatedAt: now } : a));
+        let updatedAccounts: PendingAccount[] = [];
+        setPendingAccounts(prev => {
+          // Instead of marking as 'Pagada' in the list, we remove it
+          // so it disappears from "Cuentas Abiertas" as requested
+          // once it has been recorded as a final sale in the sales history/sheet.
+          updatedAccounts = prev.filter(a => a.id !== account.id);
+          return updatedAccounts;
+        });
+        
+        // Eagerly sync the removal
+        syncPendingAccounts(updatedAccounts);
+
         if (activePendingAccount?.id === account.id) {
           setActivePendingAccount(null);
         }
       } else {
-        // Partial payment: Record as "Abono" sales
+        // Partial or session payment: Record as "Pago" sales
         for (const p of sessionPayments) {
-          const abonoSale: Sale = {
+          const pagoSale: Sale = {
             id: Math.random().toString(36).substr(2, 9),
             timestamp: now,
-            productName: `Abono Cuenta: ${account.customerName}`,
+            productName: `Pago Cuenta: ${account.customerName}`,
             category: 'Otros',
             amount: p.amount,
             quantity: 1,
@@ -496,7 +568,7 @@ export default function App() {
             username: currentUser.username,
           };
 
-          setSales(prev => [abonoSale, ...prev]);
+          setSales(prev => [pagoSale, ...prev]);
 
           await fetch('/api/sheets/sale', {
             method: 'POST',
@@ -504,8 +576,8 @@ export default function App() {
             body: JSON.stringify({ 
               tokens: googleTokens, 
               spreadsheetId: templateId, 
-              sale: abonoSale,
-              productId: 'abono' // Special ID for abonos
+              sale: pagoSale,
+              productId: 'pago' // Special ID for payments
             }),
           });
         }
@@ -520,7 +592,15 @@ export default function App() {
           ]
         };
 
-        setPendingAccounts(prev => prev.map(a => a.id === account.id ? updatedAccount : a));
+        let updatedAccounts: PendingAccount[] = [];
+        setPendingAccounts(prev => {
+          updatedAccounts = prev.map(a => a.id === account.id ? updatedAccount : a);
+          return updatedAccounts;
+        });
+        
+        // Eagerly sync partial payment
+        syncPendingAccounts(updatedAccounts);
+
         if (activePendingAccount?.id === account.id) {
           setActivePendingAccount(updatedAccount);
         }
@@ -529,6 +609,21 @@ export default function App() {
       console.error('Error paying account:', error);
       fetchData();
     }
+  };
+
+  const handleDeletePendingAccount = (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta cuenta?')) return;
+    const updated = pendingAccounts.filter(a => a.id !== id);
+    setPendingAccounts(updated);
+    syncPendingAccounts(updated);
+  };
+
+  const handleUpdatePendingAccount = (updatedAcc: PendingAccount) => {
+    setPendingAccounts(prev => {
+      const updated = prev.map(a => a.id === updatedAcc.id ? updatedAcc : a);
+      syncPendingAccounts(updated);
+      return updated;
+    });
   };
 
   const getAutoIcon = (category: string): string => {
@@ -559,7 +654,7 @@ export default function App() {
     setProducts([...products, newProduct]);
 
     const newMovement: InventoryMovement = {
-      timestamp: new Date().toLocaleString('es-MX', { hour12: false }),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
       productId: newProduct.id,
       productName: newProduct.name,
       type: "Alta de Producto",
@@ -598,7 +693,7 @@ export default function App() {
     if (product) {
       iconToSync = product.icon || getAutoIcon(product.category);
       const newMovement: InventoryMovement = {
-        timestamp: new Date().toLocaleString('es-MX', { hour12: false }),
+        timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
         productId,
         productName: product.name,
         type: adjustment > 0 ? "Entrada" : "Ajuste/Salida",
@@ -635,7 +730,7 @@ export default function App() {
     const newExpense: Expense = {
       ...expenseData,
       id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleString('es-MX', { hour12: false }),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
       username: currentUser.username
     };
 
@@ -841,13 +936,15 @@ export default function App() {
                 <RefreshCw size={18} className={cn(isLoading && "animate-spin")} />
               </button>
             </div>
-            <button 
-              onClick={() => setShowSettings(true)}
-              className="p-2 text-dust hover:text-espresso transition-colors"
-              title="Configuración de Plantilla"
-            >
-              <Settings size={18} />
-            </button>
+            {currentUser?.role === 'admin' && (
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="p-2 text-dust hover:text-espresso transition-colors"
+                title="Configuración de Plantilla"
+              >
+                <Settings size={18} />
+              </button>
+            )}
             <button 
               onClick={handleLogout}
               className="px-3 lg:px-4 py-1.5 lg:py-2 text-[10px] lg:text-xs font-medium border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
@@ -889,6 +986,11 @@ export default function App() {
               pendingAccounts={pendingAccounts.filter(a => a.status === 'Abierta')}
               activePendingAccount={activePendingAccount}
               onCancelPending={() => setActivePendingAccount(null)}
+              onUpdatePendingAccount={handleUpdatePendingAccountItems}
+              posCart={posCart}
+              setPosCart={setPosCart}
+              posCustomerName={posCustomerName}
+              setPosCustomerName={setPosCustomerName}
             />
           )}
           {activeView === 'cuentas' && (
@@ -898,11 +1000,9 @@ export default function App() {
                 setActivePendingAccount(acc);
                 setActiveView('ventas');
               }}
-              onDeleteAccount={(id) => setPendingAccounts(pendingAccounts.filter(a => a.id !== id))}
+              onDeleteAccount={handleDeletePendingAccount}
               onPayAccount={handlePayPendingAccount}
-              onUpdateAccount={(updatedAcc) => {
-                setPendingAccounts(prev => prev.map(a => a.id === updatedAcc.id ? updatedAcc : a));
-              }}
+              onUpdateAccount={handleUpdatePendingAccount}
             />
           )}
           {activeView === 'registros' && (

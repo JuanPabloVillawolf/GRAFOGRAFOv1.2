@@ -13,7 +13,8 @@ import {
   Wine, 
   Sparkles,
   ChevronDown, 
-  ChevronUp, 
+  ChevronUp,
+  ChevronLeft, 
   Search, 
   Plus, 
   Save,
@@ -220,209 +221,329 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
   };
 
   return (
-    <div id="inventory-container" className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 max-w-2xl mx-auto">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-dust" size={18} />
-          <input 
-            type="text"
-            placeholder="Buscar en inventario..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-mist rounded-xl py-3 pl-12 pr-10 text-sm outline-none focus:border-bark transition-colors"
-          />
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-dust hover:text-espresso"
-            >
-              ×
-            </button>
-          )}
-        </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="px-6 bg-espresso text-cream rounded-xl flex items-center gap-2 text-sm font-medium hover:bg-bark transition-colors shadow-lg shadow-espresso/10"
-        >
-          <Plus size={18} />
-          Nuevo Producto
-        </button>
-      </div>
-
-      <div className="min-h-[400px]">
-        {searchTerm ? (
-          <div className="space-y-4">
-            <div className="text-[10px] uppercase tracking-widest text-dust font-bold">Resultados de búsqueda</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products
-                .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                .sort((a, b) => {
-                  const term = searchTerm.toLowerCase();
-                  const aName = a.name.toLowerCase();
-                  const bName = b.name.toLowerCase();
-                  if (aName === term) return -1;
-                  if (bName === term) return 1;
-                  if (aName.startsWith(term) && !bName.startsWith(term)) return -1;
-                  if (!aName.startsWith(term) && bName.startsWith(term)) return 1;
-                  return aName.localeCompare(bName);
-                })
-                .map((product, index) => (
-                  <div
-                    key={`${product.id}-${index}`}
-                    id={`product-search-${product.id}`}
-                    className={cn(
-                      "w-full p-4 border rounded-xl flex items-center justify-between transition-all",
-                      getCategoryStyle(product.category).bg,
-                      getCategoryStyle(product.category).border
-                    )}
-                  >
-                    <div className="flex items-center gap-3 text-left">
-                      <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                        getCategoryStyle(product.category).color,
-                        "text-white"
-                      )}>
-                        {(() => {
-                          const Icon = getProductIcon(product.icon, product.category);
-                          return <Icon size={16} />;
-                        })()}
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-ink">{product.name}</div>
-                        <div className="text-[10px] text-dust uppercase tracking-wider">
-                          {product.category} · Stock: {product.stock}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="number"
-                        placeholder="Cant."
-                        className="w-16 bg-cream border border-mist rounded-lg px-2 py-1 text-xs outline-none focus:border-bark"
-                        value={stockUpdates[product.id] || ''}
-                        onChange={(e) => handleStockChange(product.id, e.target.value)}
-                      />
-                      <button 
-                        onClick={() => handleSave(product)}
-                        className="p-1.5 bg-espresso text-cream rounded-lg hover:bg-bark transition-all"
-                      >
-                        <Save size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              }
+    <div id="inventory-container" className="max-w-none mx-auto space-y-6 px-2 lg:px-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Main Area: Categories and Products */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* Header Card */}
+          <div className="bg-white rounded-[2rem] border border-parchment p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-bark/10 rounded-2xl flex items-center justify-center text-bark">
+                <BookOpen size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif text-xl text-espresso">Inventario</h3>
+                <p className="text-xs text-dust">Gestiona tus productos y existencias</p>
+              </div>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-dust" size={16} />
+              <input 
+                type="text"
+                placeholder="Buscar artículo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-cream border border-parchment rounded-xl py-2 pl-10 pr-4 text-xs outline-none focus:border-gold transition-all"
+              />
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {categories.map((cat) => {
-              const style = getCategoryStyle(cat);
-              // Find the first product in this category to use its icon
-              const firstProduct = products.find(p => p.category === cat);
-              const Icon = firstProduct 
-                ? getProductIcon(firstProduct.icon, firstProduct.category)
-                : style.icon;
-              const catProducts = products.filter(p => p.category === cat);
-              const isExpanded = expandedCategory === cat;
 
-              return (
-                <div key={cat} className="space-y-2">
-                  <button
-                    onClick={() => toggleCategory(cat)}
-                    className={cn(
-                      "w-full p-6 rounded-2xl border transition-all flex flex-col items-center gap-3 group",
-                      isExpanded 
-                        ? "bg-espresso border-espresso text-cream shadow-lg" 
-                        : cn("bg-white border-parchment text-espresso hover:border-bark", style.bg.replace('bg-', 'hover:bg-').replace('/10', '/5'))
-                    )}
-                  >
-                    <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
-                      isExpanded ? "bg-gold/20 text-gold" : cn(style.bg, style.text)
-                    )}>
-                      <Icon size={28} />
-                    </div>
-                    <span className="font-serif text-sm font-semibold">{cat}</span>
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} className="opacity-50" />}
-                  </button>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden space-y-4 pt-2"
-                      >
-                        {(() => {
-                          return (
-                            <div className="space-y-2">
-                              {catProducts.map((product, index) => (
-                                <div
-                                  key={`${product.id}-${index}`}
-                                  id={`product-${product.id}`}
-                                  className={cn(
-                                    "w-full p-4 border rounded-xl flex items-center justify-between transition-all",
-                                    style.bg,
-                                    product.stock <= 5 
-                                      ? "border-red-500 border-2 shadow-lg shadow-red-500/20 ring-2 ring-red-500/10" 
-                                      : style.border
-                                  )}
-                                >
-                                  <div className="flex items-center gap-3 text-left">
-                                    <div className={cn(
-                                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform",
-                                      product.stock <= 5 ? "bg-red-500 scale-110 shadow-md" : getCategoryStyle(product.category).color,
-                                      "text-white"
-                                    )}>
-                                      {(() => {
-                                        const StyledIcon = getProductIcon(product.icon, product.category);
-                                        return <StyledIcon size={product.stock <= 5 ? 18 : 14} />;
-                                      })()}
-                                    </div>
-                                    <div>
-                                      <div className={cn(
-                                        "text-xs font-medium transition-colors",
-                                        product.stock <= 5 ? "text-red-600 font-bold" : "text-ink"
-                                      )}>{product.name}</div>
-                                      <div className={cn(
-                                        "text-[10px] uppercase tracking-wider",
-                                        product.stock <= 5 ? "text-red-500 font-bold" : "text-dust"
-                                      )}>
-                                        ⚠️ Stock Crítico: {product.stock}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <input 
-                                      type="number"
-                                      placeholder="Cant."
-                                      className="w-16 bg-white/50 border border-mist rounded-lg px-2 py-1 text-xs outline-none focus:border-bark"
-                                      value={stockUpdates[product.id] || ''}
-                                      onChange={(e) => handleStockChange(product.id, e.target.value)}
-                                    />
-                                    <button 
-                                      onClick={() => handleSave(product)}
-                                      className="p-1.5 bg-espresso text-cream rounded-lg hover:bg-bark transition-all"
-                                    >
-                                      <Save size={14} />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+          <div className="min-h-[500px]">
+            {searchTerm ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                  <h4 className="text-[10px] font-bold text-dust uppercase tracking-[0.2em]">Resultados de búsqueda</h4>
+                  <button onClick={() => setSearchTerm('')} className="text-[10px] font-bold text-gold uppercase hover:underline">Limpiar</button>
                 </div>
-              );
-            })}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {products
+                    .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .map((product, index) => {
+                      const style = getCategoryStyle(product.category);
+                      const Icon = getProductIcon(product.icon, product.category);
+                      const isCritical = product.stock <= 5;
+                      return (
+                        <div key={`${product.id}-${index}`} className={cn(
+                          "bg-white border p-3 rounded-2xl flex items-center justify-between group transition-all hover:shadow-lg gap-3",
+                          isCritical ? "border-red-200 bg-red-50/30" : "border-parchment"
+                        )}>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className={cn(
+                              "w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 shrink-0",
+                              isCritical ? "bg-red-500 text-white" : cn(style.bg, style.text)
+                            )}>
+                              <Icon size={20} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-bold text-espresso truncate">{product.name}</div>
+                              <div className="text-[10px] font-bold text-dust uppercase tracking-wider flex items-center gap-1.5 truncate">
+                                <span className="opacity-50">{product.category}</span>
+                                <span className={cn(
+                                  "px-1.5 py-0.5 rounded border",
+                                  isCritical ? "bg-red-100 text-red-600 border-red-200" : "bg-parchment/50 text-dust border-parchment"
+                                )}>
+                                  {product.stock} un.
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="number"
+                              className="w-14 bg-cream border border-parchment rounded-lg py-1.5 px-2 text-xs font-bold text-center"
+                              placeholder="±"
+                              value={stockUpdates[product.id] || ''}
+                              onChange={(e) => handleStockChange(product.id, e.target.value)}
+                            />
+                            <button 
+                              onClick={() => handleSave(product)}
+                              className="p-2 bg-espresso text-cream rounded-lg hover:bg-bark transition-colors"
+                            >
+                              <Save size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+                {categories.map((cat) => {
+                  const style = getCategoryStyle(cat);
+                  const firstProduct = products.find(p => p.category === cat);
+                  const Icon = firstProduct 
+                    ? getProductIcon(firstProduct.icon, firstProduct.category)
+                    : style.icon;
+                  const catProducts = products.filter(p => p.category === cat);
+                  const criticalCount = catProducts.filter(p => p.stock <= 5).length;
+
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setExpandedCategory(cat)}
+                      className={cn(
+                        "w-full aspect-square p-4 rounded-[2.5rem] border transition-all flex flex-col items-center justify-center gap-4 group bg-white border-parchment text-espresso hover:border-gold shadow-sm hover:shadow-2xl hover:-translate-y-1",
+                        style.bg.replace('bg-', 'hover:bg-').replace('/15', '/20')
+                      )}
+                    >
+                      <div className="relative">
+                        <div className={cn(
+                          "w-20 h-20 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110",
+                          style.bg, style.text,
+                          "shadow-inner"
+                        )}>
+                          <Icon size={40} />
+                        </div>
+                        {criticalCount > 0 && (
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                            {criticalCount}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center space-y-1">
+                        <span className="font-serif text-base font-bold tracking-tight block">{cat}</span>
+                        <span className="text-[10px] text-dust font-bold uppercase tracking-widest">
+                          {catProducts.length} productos
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar Area: Stats and Quick Actions */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Quick Add Button */}
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="w-full p-6 bg-espresso text-cream rounded-[2.5rem] flex flex-col items-center gap-3 hover:bg-bark transition-all shadow-xl shadow-espresso/20 group"
+          >
+            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform">
+              <Plus size={28} />
+            </div>
+            <span className="font-serif text-lg font-bold">Registrar nuevo producto</span>
+            <span className="text-[10px] opacity-70 uppercase tracking-widest font-bold">Agregar artículo al catálogo</span>
+          </button>
+
+          {/* Stats Card */}
+          <div className="bg-white rounded-[2.5rem] border border-parchment overflow-hidden shadow-sm flex flex-col h-[500px]">
+            <div className="p-8 border-b border-parchment bg-cream/50">
+              <h4 className="font-serif text-lg text-espresso flex items-center gap-2">
+                <Sparkles size={18} className="text-gold" />
+                Resumen de Almacén
+              </h4>
+              <p className="text-xs text-dust mt-1">Estado de tus existencias actuales</p>
+            </div>
+            
+            <div className="flex-1 p-8 space-y-8 overflow-auto">
+              {/* Critical Stocks List */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Alerta Crítica</span>
+                  <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-bold">
+                    {products.filter(p => p.stock <= 5).length} items
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {products.filter(p => p.stock <= 5).slice(0, 4).map(p => (
+                    <div key={p.id} className="flex items-center justify-between group">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-xs font-bold text-espresso group-hover:text-red-500 transition-colors">{p.name}</span>
+                      </div>
+                      <span className="font-mono text-xs font-bold text-red-500">{p.stock}</span>
+                    </div>
+                  ))}
+                  {products.filter(p => p.stock <= 5).length > 4 && (
+                    <div className="text-[10px] text-dust italic text-center pt-2">...y {products.filter(p => p.stock <= 5).length - 4} más</div>
+                  )}
+                </div>
+              </div>
+
+              {/* General Health */}
+              <div className="pt-8 border-t border-parchment space-y-6">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-end">
+                    <span className="text-[10px] font-bold text-dust uppercase tracking-widest">Salud del Inventario</span>
+                    <span className="text-xs font-bold text-sage">
+                      {Math.round((products.filter(p => p.stock > 5).length / products.length) * 100)}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-parchment rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-sage transition-all duration-1000" 
+                      style={{ width: `${(products.filter(p => p.stock > 5).length / products.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-cream rounded-2xl border border-parchment/50">
+                    <span className="text-[10px] font-bold text-dust uppercase tracking-widest block mb-1">Total Items</span>
+                    <span className="text-2xl font-serif font-bold text-espresso">{products.length}</span>
+                  </div>
+                  <div className="p-4 bg-cream rounded-2xl border border-parchment/50">
+                    <span className="text-[10px] font-bold text-dust uppercase tracking-widest block mb-1">Categorías</span>
+                    <span className="text-2xl font-serif font-bold text-espresso">{categories.length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Category Products Modal */}
+      <AnimatePresence>
+        {expandedCategory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl w-full max-w-5xl overflow-hidden h-full max-h-[92vh] md:max-h-[85vh] flex flex-col"
+            >
+              <div className="px-6 md:px-10 py-5 md:py-8 border-b border-parchment flex items-center justify-between bg-cream/50">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <div className={cn(
+                    "w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.5rem] flex items-center justify-center shadow-lg",
+                    getCategoryStyle(expandedCategory).bg,
+                    getCategoryStyle(expandedCategory).text
+                  )}>
+                    {(() => {
+                      const firstP = products.find(p => p.category === expandedCategory);
+                      const Icon = firstP ? getProductIcon(firstP.icon, firstP.category) : getCategoryStyle(expandedCategory).icon;
+                      return <Icon size={24} className="md:size-[32px]" />;
+                    })()}
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg md:text-2xl text-espresso tracking-tight leading-tight">{expandedCategory}</h3>
+                    <p className="text-[9px] md:text-xs text-dust font-bold uppercase tracking-widest">
+                      {products.filter(p => p.category === expandedCategory).length} artículos
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setExpandedCategory(null)}
+                  className="p-2 md:p-3 hover:bg-espresso/5 rounded-full text-dust hover:text-espresso transition-all"
+                >
+                  <ChevronDown size={24} className="md:size-[32px]" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 md:p-10 bg-cream/5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                  {products
+                    .filter(p => p.category === expandedCategory)
+                    .map((product, index) => {
+                      const style = getCategoryStyle(product.category);
+                      const Icon = getProductIcon(product.icon, product.category);
+                      const isCritical = product.stock <= 5;
+                      return (
+                        <div key={`${product.id}-${index}`} className={cn(
+                           "bg-white border p-3 md:p-6 rounded-2xl md:rounded-[2.5rem] flex items-center justify-between group transition-all hover:shadow-xl gap-3",
+                           isCritical ? "border-red-200 bg-red-50/50" : "border-parchment"
+                        )}>
+                          <div className="flex items-center gap-3 md:gap-5 min-w-0 flex-1">
+                            <div className={cn(
+                               "w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110",
+                               isCritical ? "bg-red-500 text-white shadow-lg" : cn(style.bg, style.text)
+                            )}>
+                              <Icon size={20} className="md:size-[28px]" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs md:text-base font-bold text-espresso truncate">{product.name}</div>
+                              <div className={cn(
+                                "text-[9px] md:text-[11px] font-bold uppercase tracking-[0.1em] truncate px-2 py-0.5 rounded border w-fit mt-1",
+                                isCritical ? "bg-red-100 text-red-600 border-red-200" : "bg-cream/80 text-dust border-mist/30"
+                              )}>
+                                {isCritical ? '⚠️ Stock' : 'Stock'}: {product.stock} un.
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                            <div className="flex flex-col items-center">
+                              <span className="text-[8px] md:text-[9px] font-bold text-dust uppercase tracking-widest mb-1">Ajuste</span>
+                              <input 
+                                type="number"
+                                className="w-12 md:w-16 bg-cream border border-parchment rounded-lg md:rounded-xl py-1.5 md:py-2.5 px-1 md:px-2 text-xs font-bold text-center focus:border-gold transition-all"
+                                placeholder="±"
+                                value={stockUpdates[product.id] || ''}
+                                onChange={(e) => handleStockChange(product.id, e.target.value)}
+                              />
+                            </div>
+                            <button 
+                              onClick={() => handleSave(product)}
+                              className={cn(
+                                "p-2 md:p-3 rounded-lg md:rounded-2xl transition-all self-end",
+                                stockUpdates[product.id] ? "bg-gold text-espresso shadow-lg hover:scale-105" : "bg-parchment/50 text-dust opacity-50"
+                              )}
+                            >
+                              <Save size={16} className="md:size-[20px]" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+              
+              <div className="px-6 md:px-10 py-5 md:py-6 bg-cream/30 border-t border-parchment flex justify-center shrink-0">
+                <button 
+                  onClick={() => setExpandedCategory(null)}
+                  className="w-full md:w-auto px-12 py-3 bg-espresso text-cream rounded-xl md:rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-bark transition-all shadow-xl shadow-espresso/20"
+                >
+                  Cerrar Categoría
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
-      </div>
+      </AnimatePresence>
 
       {/* Confirmation Modal for Stock Adjustment */}
       <AnimatePresence>
@@ -473,71 +594,91 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
       {/* Add Product Modal */}
       <AnimatePresence>
         {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-parchment"
             >
-              <div className="p-6 border-b border-mist">
-                <h3 className="font-serif text-lg text-espresso">Nuevo Producto</h3>
-                <p className="text-xs text-dust mt-1">Agrega un artículo extra al inventario.</p>
+              <div className="px-8 py-6 border-b border-parchment flex items-center justify-between bg-cream/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-espresso rounded-2xl flex items-center justify-center text-cream shadow-lg">
+                    <Plus size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-xl text-espresso">Alta de Nuevo Producto</h3>
+                    <p className="text-xs text-dust">Ingresa los detalles para el catálogo de inventario.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowAddModal(false)}
+                  className="p-2 hover:bg-espresso/5 rounded-full text-dust transition-colors"
+                >
+                  <ChevronDown size={24} />
+                </button>
               </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">Nombre del Producto</label>
+
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold text-dust uppercase tracking-widest mb-2 ml-1">Nombre Completo del Artículo</label>
                     <input 
                       type="text"
                       value={newProduct.name}
                       onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      className="w-full bg-cream border border-mist rounded-xl py-2 px-4 text-sm outline-none focus:border-bark"
-                      placeholder="Ej. Separador Artesanal"
+                      className="w-full bg-white border border-parchment rounded-xl py-3 px-4 text-sm outline-none focus:border-gold transition-all shadow-sm"
+                      placeholder="Ej. Café Americano Tostado"
                     />
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">Categoría</label>
+                  
+                  <div>
+                    <label className="block text-[10px] font-bold text-dust uppercase tracking-widest mb-2 ml-1">Categoría</label>
                     <div className="relative">
                       <input 
                         list="category-list"
                         value={newProduct.category}
                         onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                        className="w-full bg-cream border border-mist rounded-xl py-2 px-4 text-sm outline-none focus:border-bark"
-                        placeholder="Selecciona o escribe una categoría"
+                        className="w-full bg-white border border-parchment rounded-xl py-3 px-4 text-sm outline-none focus:border-gold transition-all shadow-sm"
+                        placeholder="Elegir categoría..."
                       />
                       <datalist id="category-list">
                         {categories.map(c => <option key={c} value={c} />)}
                       </datalist>
                     </div>
                   </div>
+
                   <div>
-                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">Precio ($)</label>
+                    <label className="block text-[10px] font-bold text-dust uppercase tracking-widest mb-2 ml-1">Precio Unitario ($)</label>
                     <input 
                       type="number"
                       value={newProduct.price || ''}
                       onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
-                      className="w-full bg-cream border border-mist rounded-xl py-2 px-4 text-sm outline-none focus:border-bark"
+                      className="w-full bg-white border border-parchment rounded-xl py-3 px-4 text-sm font-bold outline-none focus:border-gold transition-all shadow-sm"
+                      placeholder="0.00"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">Stock Inicial</label>
+                    <label className="block text-[10px] font-bold text-dust uppercase tracking-widest mb-2 ml-1">Stock de Apertura</label>
                     <input 
                       type="number"
                       value={newProduct.stock || ''}
                       onChange={(e) => setNewProduct({...newProduct, stock: parseInt(e.target.value)})}
-                      className="w-full bg-cream border border-mist rounded-xl py-2 px-4 text-sm outline-none focus:border-bark"
+                      className="w-full bg-white border border-parchment rounded-xl py-3 px-4 text-sm outline-none focus:border-gold transition-all shadow-sm"
+                      placeholder="0"
                     />
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">Icono (Ej. book, coffee, food)</label>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-dust uppercase tracking-widest mb-2 ml-1">Identificador de Icono</label>
                     <div className="relative">
                       <input 
                         list="icon-list"
                         value={newProduct.icon}
                         onChange={(e) => setNewProduct({...newProduct, icon: e.target.value})}
-                        className="w-full bg-cream border border-mist rounded-xl py-2 px-4 text-sm outline-none focus:border-bark"
-                        placeholder="Ej. coffee"
+                        className="w-full bg-white border border-parchment rounded-xl py-3 px-4 text-sm outline-none focus:border-gold transition-all shadow-sm"
+                        placeholder="coffee, book, food..."
                       />
                       <datalist id="icon-list">
                         {Object.keys(ICON_MAP).map(icon => <option key={icon} value={icon} />)}
@@ -546,19 +687,20 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                   </div>
                 </div>
               </div>
-              <div className="p-4 bg-cream flex justify-end gap-3">
+
+              <div className="px-8 py-6 bg-cream/30 border-t border-parchment flex justify-end gap-4">
                 <button 
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-dust hover:text-espresso"
+                  className="px-6 py-3 text-xs font-bold text-dust uppercase tracking-widest hover:text-espresso transition-colors"
                 >
-                  Cancelar
+                  Descartar
                 </button>
                 <button 
                   onClick={handleAddProduct}
                   disabled={!newProduct.name || newProduct.price <= 0}
-                  className="px-6 py-2 text-xs font-medium bg-espresso text-cream rounded-lg hover:bg-bark transition-colors disabled:opacity-50"
+                  className="px-10 py-3 bg-espresso text-cream rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-bark transition-all shadow-lg shadow-espresso/20 disabled:opacity-30"
                 >
-                  Agregar al Inventario
+                  Registrar Producto
                 </button>
               </div>
             </motion.div>

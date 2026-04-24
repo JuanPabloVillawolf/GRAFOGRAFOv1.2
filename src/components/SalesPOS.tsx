@@ -21,12 +21,18 @@ import {
   Minus, 
   Trash2, 
   User, 
+  Users,
   X,
   BookOpen,
   CupSoda,
   ShoppingBag,
   Beer,
-  Settings
+  Settings,
+  CreditCard,
+  Wallet,
+  Landmark,
+  UserPlus,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -42,6 +48,217 @@ interface SalesPOSProps {
   pendingAccounts: PendingAccount[];
   activePendingAccount?: PendingAccount | null;
   onCancelPending?: () => void;
+  onUpdatePendingAccount?: (items: CartItem[]) => void;
+  posCart: CartItem[];
+  setPosCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
+  posCustomerName: string;
+  setPosCustomerName: (name: string) => void;
+}
+
+function CartView({ 
+  cart, 
+  removeFromCart, 
+  updateCartQuantity, 
+  cartTotal, 
+  activePendingAccount, 
+  onUpdatePendingAccount,
+  isMobile = false,
+  onCloseMobile,
+  customerName,
+  setCustomerName,
+  quickCheckout,
+  hideCheckout = false
+}: {
+  cart: CartItem[],
+  removeFromCart: (id: string) => void,
+  updateCartQuantity: (id: string, delta: number) => void,
+  cartTotal: number,
+  activePendingAccount?: PendingAccount | null,
+  onUpdatePendingAccount?: (items: CartItem[]) => void,
+  isMobile?: boolean,
+  onCloseMobile?: () => void,
+  customerName?: string,
+  setCustomerName?: (val: string) => void,
+  quickCheckout?: (method: string) => void,
+  hideCheckout?: boolean
+}) {
+  return (
+    <div className={cn(
+      "bg-white flex flex-col h-full shadow-xl shadow-espresso/5 transition-all duration-300",
+      !isMobile && "border border-mist/40 rounded-[2rem] lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)]",
+      isMobile && "rounded-b-[1.5rem]"
+    )}>
+      <div className="p-4 lg:p-5 border-b border-mist bg-cream/20 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={20} className="text-bark" />
+            <h3 className="font-serif text-lg text-espresso">Carrito</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="bg-gold/20 text-espresso text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)} {cart.length === 1 ? 'item' : 'items'}
+            </span>
+            {isMobile && onCloseMobile && (
+              <button 
+                onClick={onCloseMobile}
+                className="p-1 text-dust hover:text-espresso transition-colors"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Reference / Customer Name - Always visible for quick access */}
+        <div className="relative group">
+          <UserPlus size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-dust group-focus-within:text-gold transition-colors" />
+          <input 
+            type="text"
+            value={customerName || ''}
+            onChange={(e) => setCustomerName?.(e.target.value)}
+            className="w-full bg-white border border-mist rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-gold focus:ring-2 focus:ring-gold/10 transition-all"
+            placeholder="Nombre o Mesa (Ref. opcional)"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 min-h-[150px] max-h-[50vh] lg:max-h-none scrollbar-thin scrollbar-thumb-parchment">
+        {cart.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-dust py-10 opacity-50">
+            <ShoppingCart size={40} strokeWidth={1} />
+            <p className="text-xs mt-2 italic">Carrito vacío</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <AnimatePresence initial={false}>
+              {cart.map((item) => (
+                <motion.div
+                  key={item.product.id}
+                  layout
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="bg-cream/20 border border-mist/30 rounded-2xl p-3 hover:border-mist transition-all group relative overflow-hidden"
+                >
+                  <div className="flex justify-between items-start gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-espresso leading-tight pr-4">{item.product.name}</div>
+                      <div className="text-[10px] text-dust font-medium mt-0.5">{formatCurrency(item.product.price)} c/u</div>
+                    </div>
+                    <button 
+                      onClick={() => removeFromCart(item.product.id)}
+                      className="text-red-300 hover:text-red-500 transition-colors shrink-0 p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    {/* Quantity Controls */}
+                    <div className="flex items-center gap-3 bg-white px-2 py-1.5 rounded-xl border border-mist/50 shadow-sm">
+                      <button 
+                        onClick={() => updateCartQuantity(item.product.id, -1)}
+                        className="w-6 h-6 flex items-center justify-center text-dust hover:text-espresso hover:bg-cream rounded-lg transition-colors"
+                      >
+                        <Minus size={12} strokeWidth={3} />
+                      </button>
+                      <span className="text-xs font-bold text-espresso min-w-[1.2rem] text-center">{item.quantity}</span>
+                      <button 
+                        onClick={() => updateCartQuantity(item.product.id, 1)}
+                        className="w-6 h-6 flex items-center justify-center text-dust hover:text-espresso hover:bg-cream rounded-lg transition-colors"
+                      >
+                        <Plus size={12} strokeWidth={3} />
+                      </button>
+                    </div>
+
+                    {/* Subtotal */}
+                    <div className="font-serif text-sm font-bold text-bark bg-white/50 px-3 py-1.5 rounded-xl border border-parchment">
+                      {formatCurrency(item.product.price * item.quantity)}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 bg-parchment/30 border-t border-mist space-y-4 rounded-b-2xl">
+        <div className="flex justify-between items-end">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-dust font-bold uppercase tracking-widest leading-none">Total</span>
+            <span className="text-2xl font-bold text-espresso leading-none">{formatCurrency(cartTotal)}</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          {!hideCheckout && (
+            activePendingAccount ? (
+              <button 
+                onClick={() => onUpdatePendingAccount?.(cart)}
+                disabled={cart.length === 0}
+                className="w-full py-4 bg-gold text-espresso rounded-2xl text-sm font-bold hover:bg-bark hover:text-white transition-all shadow-xl shadow-gold/10 flex items-center justify-center gap-2"
+              >
+                <Clock size={18} />
+                Actualizar Cuenta Pendiente
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <div className="text-[10px] font-bold text-dust uppercase tracking-[0.2em]">Forma de Pago</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button 
+                    onClick={() => quickCheckout?.('Efectivo')}
+                    disabled={cart.length === 0}
+                    className="h-16 bg-espresso text-cream rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-bark transition-all disabled:opacity-50 shadow-lg shadow-espresso/10 group"
+                  >
+                    <Wallet size={18} className="group-active:scale-90 transition-transform" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Efectivo</span>
+                  </button>
+                  <button 
+                    onClick={() => quickCheckout?.('Tarjeta')}
+                    disabled={cart.length === 0}
+                    className="h-16 bg-gold text-espresso rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-bark hover:text-white transition-all disabled:opacity-50 shadow-lg shadow-gold/10 group"
+                  >
+                    <CreditCard size={18} className="group-active:scale-90 transition-transform" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Tarjeta</span>
+                  </button>
+                  <button 
+                    onClick={() => quickCheckout?.('Transferencia')}
+                    disabled={cart.length === 0}
+                    className="h-14 bg-cream border border-mist/50 text-espresso rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-mist transition-all disabled:opacity-50 group"
+                  >
+                    <Landmark size={14} className="text-dust group-active:scale-90 transition-transform" />
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-dust">Transfer</span>
+                  </button>
+                  <button 
+                    onClick={() => quickCheckout?.('Pendiente')}
+                    disabled={cart.length === 0}
+                    className="h-14 bg-cream border border-mist/50 text-espresso rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-mist transition-all disabled:opacity-50 group"
+                  >
+                    <Clock size={14} className="text-bark group-active:scale-90 transition-transform" />
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-bark">Pendiente</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 opacity-80">
+                  <button 
+                    onClick={() => quickCheckout?.('Gratis')}
+                    disabled={cart.length === 0}
+                    className="py-2.5 bg-parchment/30 border border-parchment text-dust rounded-xl flex items-center justify-center gap-2 hover:bg-parchment transition-all text-[8px] font-bold uppercase tracking-widest"
+                  >
+                    <Gift size={12} />
+                    Cortesía
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const CATEGORY_STYLES: Record<string, { icon: any, color: string, bg: string, border: string, text: string }> = {
@@ -154,47 +371,54 @@ const getProductIcon = (iconName: string | undefined, category: string) => {
   return getCategoryStyle(category).icon;
 };
 
-export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePendingAccount, onCancelPending }: SalesPOSProps) {
+export function SalesPOS({ 
+  products, 
+  onAddSale, 
+  sales, 
+  pendingAccounts, 
+  activePendingAccount, 
+  onCancelPending,
+  onUpdatePendingAccount,
+  posCart,
+  setPosCart,
+  posCustomerName,
+  setPosCustomerName
+}: SalesPOSProps) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customItem, setCustomItem] = useState({ name: '', price: 0 });
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [payments, setPayments] = useState<{ method: string, amount: number }[]>([]);
-  const [paymentAmount, setPaymentAmount] = useState<string>('');
-  const [customerName, setCustomerName] = useState('');
-  const [isQuickMenuEnabled, setIsQuickMenuEnabled] = useState(true);
   const [showMobileCart, setShowMobileCart] = useState(false);
 
   const cartTotal = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  }, [cart]);
-
-  const topProductsList = useMemo(() => {
-    // Only consider sales from the last 30 days for "trending" or overall for "frequent"
-    // Let's do overall frequency since the prompt says "most frequent"
-    const frequencyMap: Record<string, number> = {};
-    sales.forEach(sale => {
-      frequencyMap[sale.productName] = (frequencyMap[sale.productName] || 0) + sale.quantity;
-    });
-
-    return products
-      .filter(p => frequencyMap[p.name] > 0 && p.stock > 0)
-      .sort((a, b) => (frequencyMap[b.name] || 0) - (frequencyMap[a.name] || 0))
-      .slice(0, 4);
-  }, [sales, products]);
+    return posCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  }, [posCart]);
 
   useEffect(() => {
     if (activePendingAccount) {
-      setCustomerName(activePendingAccount.customerName);
-    } else if (!showPaymentModal) {
-      setCustomerName('');
+      setPosCustomerName(activePendingAccount.customerName);
+      
+      // Load account items into cart
+      const accountCart = activePendingAccount.items.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        // Fallback for custom or deleted products
+        const finalProduct = product || {
+          id: item.productId,
+          name: item.productName,
+          category: item.category,
+          price: item.price,
+          stock: 999,
+          icon: 'sparkles'
+        } as Product;
+        return { product: finalProduct, quantity: item.quantity };
+      });
+      setPosCart(accountCart);
     }
-  }, [activePendingAccount, showPaymentModal]);
+    // Note: We removed the clear-on-exit logic for persistence
+  }, [activePendingAccount, products]);
 
-  const categories = [...new Set(products.map(p => p.category))];
+  const categories = [...new Set(products.map(p => p.category))].sort((a, b) => a.localeCompare(b));
 
   const toggleCategory = (cat: string) => {
     setSelectedCategoryName(cat);
@@ -202,13 +426,7 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
   };
 
   const handleAddToCart = (product: Product) => {
-    if (activePendingAccount) {
-      // Direct add to pending account if one is active
-      onAddSale(product, 1, 'Pendiente', product.price, activePendingAccount.customerName);
-      return;
-    }
-
-    setCart(prev => {
+    setPosCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
         if (existing.quantity >= product.stock) {
@@ -226,7 +444,7 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
   };
 
   const updateCartQuantity = (productId: string, delta: number) => {
-    setCart(prev => {
+    setPosCart(prev => {
       return prev.map(item => {
         if (item.product.id === productId) {
           const newQty = Math.max(0, item.quantity + delta);
@@ -242,94 +460,25 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.product.id !== productId));
+    setPosCart(prev => prev.filter(item => item.product.id !== productId));
   };
 
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    setPayments([]);
-    setPaymentAmount(cartTotal.toString());
-    setCustomerName(activePendingAccount?.customerName || '');
-    setShowPaymentModal(true);
-  };
+  const handleQuickCheckout = (method: string) => {
+    if (posCart.length === 0) return;
 
-  const parseAmount = (val: string): number => {
-    if (!val) return 0;
-    // Remove everything EXCEPT digits, dots and minus sign
-    const clean = val.toString().replace(/[^0-9.-]/g, '');
-    const parsed = parseFloat(clean);
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
-  const addPayment = (method: string) => {
-    const amount = parseAmount(paymentAmount);
-    if (amount <= 0) return;
-
-    const newPayments = [...payments, { method, amount }];
-    setPayments(newPayments);
-    
-    // Update payment amount for next part
-    const totalPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
-    const remaining = cartTotal - totalPaid;
-    setPaymentAmount(remaining > 0 ? remaining.toFixed(2) : '');
-  };
-
-  const removePayment = (index: number) => {
-    const newPayments = [...payments];
-    const removed = newPayments.splice(index, 1)[0];
-    setPayments(newPayments);
-    
-    const totalToPay = cartTotal;
-    const currentPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
-    setPaymentAmount((totalToPay - currentPaid).toString());
-  };
-
-  const confirmSale = () => {
-    if (cart.length === 0) return;
-    
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    
-    // Check if it's a pending payment
-    const isPending = payments.some(p => p.method === 'Pendiente');
-    
-    if (isPending) {
-      if (!customerName.trim()) {
-        alert('Por favor, ingresa un nombre de referencia para la cuenta pendiente.');
-        return;
-      }
-      
-      // Process each item in cart for pending
-      cart.forEach(item => {
-        onAddSale(item.product, item.quantity, 'Pendiente', undefined, customerName.trim());
-      });
-
-      setShowPaymentModal(false);
-      setCart([]);
-      setPayments([]);
-      setCustomerName('');
+    if (method === 'Pendiente' && !posCustomerName.trim()) {
+      alert('Por favor, ingresa un nombre o mesa para la cuenta pendiente.');
       return;
     }
-
-    if (totalPaid < cartTotal) return;
-
-    const paymentDescription = payments
-      .map(p => `${p.method}: ${formatCurrency(p.amount)}`)
-      .join(' + ');
-
-    const paidAmount = payments
-      .filter(p => p.method !== 'Gratis')
-      .reduce((sum, p) => sum + p.amount, 0);
-
+    
     // Process each item in cart as a sale
-    // We distribute the total paid proportionally or just record each item
-    // For simplicity, we record each item with the combined payment description
-    cart.forEach(item => {
-      onAddSale(item.product, item.quantity, paymentDescription, (item.product.price * item.quantity / cartTotal) * paidAmount);
+    posCart.forEach(item => {
+      const amount = method === 'Gratis' ? 0 : (method === 'Pendiente' ? undefined : item.product.price * item.quantity);
+      onAddSale(item.product, item.quantity, method, amount, posCustomerName.trim());
     });
 
-    setShowPaymentModal(false);
-    setCart([]);
-    setPayments([]);
+    setPosCart([]);
+    setPosCustomerName('');
   };
 
   const handleCustomSale = () => {
@@ -344,13 +493,13 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
       icon: 'sparkles'
     };
     
-    setCart(prev => [...prev, { product: tempProduct, quantity: 1 }]);
+    setPosCart(prev => [...prev, { product: tempProduct, quantity: 1 }]);
     setShowCustomModal(false);
     setCustomItem({ name: '', price: 0 });
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4">
       {/* Active Pending Account Banner */}
       <AnimatePresence>
         {activePendingAccount && (
@@ -388,9 +537,9 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
         )}
       </AnimatePresence>
 
-      {/* Cart and Products Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        {/* Cart and Products Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
+          <div className="lg:col-span-4 space-y-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-dust" size={18} />
@@ -417,68 +566,14 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
             >
               <Plus size={20} />
             </button>
-            <label className="flex items-center gap-2 px-3 py-2 bg-white border border-mist rounded-xl cursor-pointer hover:border-parchment transition-colors group">
-              <div className="relative flex items-center justify-center">
-                <input 
-                  type="checkbox" 
-                  checked={isQuickMenuEnabled}
-                  onChange={() => setIsQuickMenuEnabled(!isQuickMenuEnabled)}
-                  className="peer appearance-none w-5 h-5 border-2 border-mist rounded-md checked:bg-gold checked:border-gold transition-all cursor-pointer"
-                />
-                <Sparkles 
-                  size={10} 
-                  className={cn(
-                    "absolute transition-opacity pointer-events-none",
-                    isQuickMenuEnabled ? "text-espresso opacity-100" : "text-dust opacity-0"
-                  )} 
-                />
-              </div>
-              <span className="text-[10px] font-bold text-dust uppercase tracking-widest group-hover:text-espresso whitespace-nowrap">
-                Frecuentes
-              </span>
-            </label>
           </div>
 
-          {/* Quick Menu */}
-          {isQuickMenuEnabled && topProductsList.length > 0 && !searchTerm && (
-            <div className="space-y-3 pb-2">
-              <div className="flex items-center gap-2 px-1">
-                <div className="w-5 h-5 bg-gold/20 rounded flex items-center justify-center">
-                  <Sparkles size={12} className="text-gold" />
-                </div>
-                <h4 className="text-[10px] font-bold text-dust uppercase tracking-widest">Lo más vendido</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-3 pb-2">
-                {topProductsList.map((product) => {
-                  const style = getCategoryStyle(product.category);
-                  const Icon = getProductIcon(product.icon, product.category);
-                  return (
-                    <motion.button
-                      key={`quick-${product.id}`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleAddToCart(product)}
-                      className="flex items-center gap-3 p-3 bg-white border border-parchment rounded-xl hover:border-gold transition-all shadow-sm text-left group"
-                    >
-                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", style.bg, style.text)}>
-                        <Icon size={20} />
-                      </div>
-                      <div className="min-w-0 pr-1">
-                        <p className="text-[11px] font-bold text-espresso truncate leading-tight mb-0.5">{product.name}</p>
-                        <p className="text-[10px] text-bark font-bold">{formatCurrency(product.price)}</p>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           <div className="min-h-[400px]">
             {searchTerm ? (
               <div className="space-y-4">
                 <div className="text-[10px] uppercase tracking-widest text-dust font-bold">Resultados de búsqueda</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {products
                     .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                     .sort((a, b) => {
@@ -503,13 +598,13 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
                         onClick={() => handleAddToCart(product)}
                         disabled={product.stock <= 0}
                         className={cn(
-                          "p-4 border rounded-xl flex items-center justify-between transition-all group disabled:opacity-50 text-left",
+                          "p-3 sm:p-4 border rounded-xl flex items-center justify-between transition-all group disabled:opacity-50 text-left gap-3",
                           getCategoryStyle(product.category).bg,
                           getCategoryStyle(product.category).border,
                           "hover:shadow-md"
                         )}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                           <div className={cn(
                             "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
                             getCategoryStyle(product.category).color,
@@ -520,14 +615,14 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
                               return <Icon size={16} />;
                             })()}
                           </div>
-                          <div>
-                            <div className="text-xs font-medium text-ink">{product.name}</div>
-                            <div className="text-[10px] text-dust uppercase tracking-wider">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-ink truncate">{product.name}</div>
+                            <div className="text-[9px] md:text-[10px] text-dust uppercase tracking-wider font-bold">
                               {product.category}
                             </div>
                           </div>
                         </div>
-                        <div className="font-serif text-sm font-semibold text-espresso group-hover:text-bark">
+                        <div className="font-serif text-xs sm:text-sm font-bold text-espresso group-hover:text-bark whitespace-nowrap bg-white/60 px-2 py-1 rounded-lg border border-mist/20 shadow-sm">
                           {formatCurrency(product.price)}
                         </div>
                       </button>
@@ -541,7 +636,7 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {categories.map((cat) => {
                   const style = getCategoryStyle(cat);
                   // Find the first product in this category to use its icon
@@ -551,24 +646,28 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
                     : style.icon;
 
                   return (
-                    <div key={cat} className="space-y-2">
-                      <button
-                        onClick={() => toggleCategory(cat)}
-                        className={cn(
-                          "w-full p-6 rounded-2xl border transition-all flex flex-col items-center gap-3 group bg-white border-parchment text-espresso hover:border-bark shadow-sm hover:shadow-md",
-                          style.bg.replace('bg-', 'hover:bg-').replace('/15', '/20')
-                        )}
-                      >
-                        <div className={cn(
-                          "w-14 h-14 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110",
-                          style.bg, style.text,
-                          "shadow-inner"
-                        )}>
-                          <Icon size={32} />
-                        </div>
-                        <span className="font-serif text-sm font-semibold tracking-wide">{cat}</span>
-                      </button>
-                    </div>
+                    <button
+                      key={cat}
+                      onClick={() => toggleCategory(cat)}
+                      className={cn(
+                        "w-full aspect-square p-4 rounded-[2rem] border transition-all flex flex-col items-center justify-center gap-4 group bg-white border-parchment text-espresso hover:border-gold shadow-sm hover:shadow-xl hover:-translate-y-1",
+                        style.bg.replace('bg-', 'hover:bg-').replace('/15', '/20')
+                      )}
+                    >
+                      <div className={cn(
+                        "w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3",
+                        style.bg, style.text,
+                        "shadow-inner"
+                      )}>
+                        <Icon size={36} className="sm:size-10" />
+                      </div>
+                      <div className="text-center space-y-1">
+                        <span className="font-serif text-sm sm:text-base font-bold tracking-tight block">{cat}</span>
+                        <span className="text-[10px] text-dust font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                          {products.filter(p => p.category === cat).length} items
+                        </span>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
@@ -578,100 +677,29 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
 
         {/* Shopping Cart Sidebar */}
         <div className={cn(
-          "bg-white border border-parchment rounded-2xl flex flex-col h-fit lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] shadow-xl shadow-espresso/5 transition-all duration-300",
+          "w-full lg:col-span-2",
           "fixed inset-x-4 bottom-4 z-40 lg:static lg:inset-auto lg:z-auto",
           showMobileCart ? "translate-y-0" : "translate-y-[calc(100%+20px)] lg:translate-y-0"
         )}>
-          <div className="p-4 lg:p-5 border-b border-mist flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingCart size={20} className="text-bark" />
-              <h3 className="font-serif text-lg text-espresso">Carrito</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="bg-gold/20 text-espresso text-[10px] font-bold px-2 py-1 rounded-full">
-                {cart.reduce((sum, item) => sum + item.quantity, 0)} items
-              </span>
-              <button 
-                onClick={() => setShowMobileCart(false)}
-                className="lg:hidden p-1 text-dust hover:text-espresso"
-              >
-                <X size={20} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[150px] max-h-[40vh] lg:max-h-none">
-            {cart.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-dust py-10 opacity-50">
-                <ShoppingCart size={40} strokeWidth={1} />
-                <p className="text-xs mt-2 italic">Carrito vacío</p>
-              </div>
-            ) : (
-              <AnimatePresence initial={false}>
-                {cart.map((item) => (
-                  <motion.div
-                    key={item.product.id}
-                    layout
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="bg-cream/50 border border-mist rounded-xl p-3 space-y-2"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="text-xs font-medium text-espresso line-clamp-1">{item.product.name}</div>
-                      <button 
-                        onClick={() => removeFromCart(item.product.id)}
-                        className="text-dust hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 bg-white border border-mist rounded-lg p-1">
-                        <button 
-                          onClick={() => updateCartQuantity(item.product.id, -1)}
-                          className="p-1 hover:bg-parchment rounded transition-colors text-dust"
-                        >
-                          <Minus size={12} />
-                        </button>
-                        <span className="text-xs font-bold w-6 text-center">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateCartQuantity(item.product.id, 1)}
-                          className="p-1 hover:bg-parchment rounded transition-colors text-dust"
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                      <div className="text-xs font-bold text-bark">
-                        {formatCurrency(item.product.price * item.quantity)}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            )}
-          </div>
-
-          <div className="p-5 bg-parchment/30 border-t border-mist space-y-4 rounded-b-2xl">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-dust font-medium uppercase tracking-wider">Total</span>
-              <span className="text-xl font-bold text-espresso">{formatCurrency(cartTotal)}</span>
-            </div>
-            <button 
-              onClick={handleCheckout}
-              disabled={cart.length === 0}
-              className="w-full py-3 bg-espresso text-cream rounded-xl text-sm font-bold hover:bg-bark transition-all shadow-lg shadow-espresso/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
-            >
-              <Receipt size={18} />
-              Cobrar Ahora
-            </button>
-          </div>
+          <CartView 
+            cart={posCart}
+            removeFromCart={removeFromCart}
+            updateCartQuantity={updateCartQuantity}
+            cartTotal={cartTotal}
+            activePendingAccount={activePendingAccount}
+            onUpdatePendingAccount={onUpdatePendingAccount}
+            isMobile={!window.matchMedia('(min-width: 1024px)').matches}
+            onCloseMobile={() => setShowMobileCart(false)}
+            customerName={posCustomerName}
+            setCustomerName={setPosCustomerName}
+            quickCheckout={handleQuickCheckout}
+          />
         </div>
       </div>
 
       {/* Mobile Cart Toggle */}
       <AnimatePresence>
-        {cart.length > 0 && !showMobileCart && (
+        {posCart.length > 0 && !showMobileCart && (
           <motion.button
             initial={{ scale: 0, y: 20 }}
             animate={{ scale: 1, y: 0 }}
@@ -682,7 +710,7 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
             <div className="relative">
               <ShoppingCart size={24} />
               <span className="absolute -top-2 -right-2 bg-gold text-espresso text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-espresso">
-                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                {posCart.reduce((sum, item) => sum + item.quantity, 0)}
               </span>
             </div>
             <span className="font-bold text-sm pr-2">{formatCurrency(cartTotal)}</span>
@@ -750,184 +778,6 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
         )}
       </AnimatePresence>
 
-      {/* Payment Method Modal */}
-      <AnimatePresence>
-        {showPaymentModal && cart.length > 0 && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm cursor-pointer"
-            onClick={() => {
-              setShowPaymentModal(false);
-              setPayments([]);
-            }}
-          >
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden cursor-default"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 border-b border-mist text-center">
-                <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-1">Confirmar Venta</div>
-                <h3 className="font-serif text-xl text-espresso">Resumen de Compra</h3>
-                <div className="text-2xl font-bold text-bark mt-2">{formatCurrency(cartTotal)}</div>
-              </div>
-
-              <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-                {/* Cart Items Summary */}
-                <div className="space-y-2">
-                  <div className="text-[10px] font-bold text-dust uppercase tracking-wider">Productos:</div>
-                  <div className="space-y-1">
-                    {cart.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-xs text-espresso">
-                        <span>{item.quantity}x {item.product.name}</span>
-                        <span className="font-medium">{formatCurrency(item.product.price * item.quantity)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Current Payments List */}
-                {payments.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-bold text-dust uppercase tracking-wider">Pagos Registrados:</div>
-                    <div className="space-y-1">
-                      {payments.map((p, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-cream px-3 py-2 rounded-lg text-xs">
-                          <span className="font-medium text-espresso">{p.method}</span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-bark">{formatCurrency(p.amount)}</span>
-                            <button 
-                              onClick={() => removePayment(idx)}
-                              className="text-red-400 hover:text-red-600"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Remaining Balance */}
-                <div className="flex justify-between items-center py-2 border-t border-dashed border-mist">
-                  <span className="text-xs text-dust">Restante:</span>
-                  <span className="text-lg font-bold text-espresso">
-                    {formatCurrency(cartTotal - payments.reduce((sum, p) => sum + p.amount, 0))}
-                  </span>
-                </div>
-
-                {/* Customer Name for Pending */}
-                {payments.some(p => p.method === 'Pendiente') && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-2 pt-2 border-t border-mist relative"
-                  >
-                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider">Nombre de Referencia (Cuenta Abierta)</label>
-                    <div className="relative">
-                      <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dust" />
-                      <input 
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        className="w-full bg-gold/5 border border-gold/30 rounded-xl py-2 pl-9 pr-4 text-sm outline-none focus:border-gold"
-                        placeholder="Ej. Mesa 5, Juan Pérez..."
-                      />
-                    </div>
-
-                    {/* Suggestions */}
-                    {customerName.trim().length > 0 && !activePendingAccount && (
-                      <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-mist rounded-xl shadow-lg max-h-32 overflow-y-auto">
-                        {pendingAccounts
-                          .filter(acc => {
-                            const normalizedInput = customerName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                            const normalizedAcc = acc.customerName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                            return normalizedAcc.includes(normalizedInput);
-                          })
-                          .map(acc => {
-                            const isExactMatch = acc.customerName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === 
-                                               customerName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                            return (
-                              <button
-                                key={acc.id}
-                                type="button"
-                                onClick={() => setCustomerName(acc.customerName)}
-                                className={cn(
-                                  "w-full text-left px-4 py-2 text-xs hover:bg-parchment border-b border-mist last:border-0 flex justify-between items-center transition-colors",
-                                  isExactMatch && "bg-gold/10"
-                                )}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-espresso">{acc.customerName}</span>
-                                  {isExactMatch && <span className="text-[8px] text-gold font-bold uppercase">Coincidencia Exacta</span>}
-                                </div>
-                                <span className="text-[9px] text-dust uppercase">Cuenta Existente</span>
-                              </button>
-                            );
-                          })
-                        }
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Amount Input */}
-                {cartTotal - payments.reduce((sum, p) => sum + p.amount, 0) > 0 && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">Cantidad a pagar</label>
-                      <input 
-                        type="number"
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
-                        className="w-full bg-cream border border-mist rounded-xl py-3 px-4 text-sm outline-none focus:border-bark"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(['Efectivo', 'Tarjeta', 'Transferencia', 'Pendiente', 'Gratis', 'Otro'] as const).map((method) => (
-                        <button
-                          key={method}
-                          onClick={() => addPayment(method)}
-                          className={cn(
-                            "py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border",
-                            method === 'Pendiente' 
-                              ? "bg-gold/20 border-gold/30 text-espresso hover:bg-gold/40"
-                              : "bg-white border-mist text-espresso hover:border-bark hover:bg-parchment"
-                          )}
-                        >
-                          {method}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 bg-cream flex flex-col gap-3">
-                <button 
-                  onClick={confirmSale}
-                  disabled={payments.reduce((sum, p) => sum + p.amount, 0) < cartTotal}
-                  className="w-full py-3 bg-espresso text-cream rounded-xl text-sm font-bold hover:bg-bark transition-colors disabled:opacity-50"
-                >
-                  Finalizar Venta
-                </button>
-                <button 
-                  onClick={() => {
-                    setShowPaymentModal(false);
-                    setPayments([]);
-                  }}
-                  className="text-xs font-medium text-dust hover:text-espresso text-center"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
       {/* Category Products Modal */}
       <AnimatePresence>
         {showCategoryModal && selectedCategoryName && (
@@ -939,100 +789,118 @@ export function SalesPOS({ products, onAddSale, sales, pendingAccounts, activePe
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[85vh] flex flex-col cursor-default"
+              className="bg-white rounded-2xl md:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden h-full max-h-[85vh] md:max-h-[80vh] flex flex-col cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className={cn(
-                "p-6 flex items-center justify-between border-b shrink-0",
-                getCategoryStyle(selectedCategoryName).bg,
-                getCategoryStyle(selectedCategoryName).border
-              )}>
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                <div className="flex-1 flex flex-col min-w-0 border-r border-parchment/50">
                   <div className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center",
-                    getCategoryStyle(selectedCategoryName).color,
-                    "text-white"
+                    "p-4 md:p-5 flex items-center justify-between border-b shrink-0",
+                    getCategoryStyle(selectedCategoryName).bg,
+                    getCategoryStyle(selectedCategoryName).border
                   )}>
-                    {(() => {
-                      const Icon = getCategoryStyle(selectedCategoryName).icon;
-                      return <Icon size={24} />;
-                    })()}
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className={cn(
+                        "w-10 h-10 md:w-12 md:h-12 rounded-[1rem] md:rounded-2xl flex items-center justify-center shadow-md",
+                        getCategoryStyle(selectedCategoryName).color,
+                        "text-white"
+                      )}>
+                        {(() => {
+                          const Icon = getCategoryStyle(selectedCategoryName).icon;
+                          return <Icon size={20} className="md:size-[24px]" />;
+                        })()}
+                      </div>
+                      <div>
+                        <h4 className="font-serif text-base md:text-xl text-espresso">{selectedCategoryName}</h4>
+                        <p className="text-[10px] md:text-xs text-dust font-bold uppercase tracking-widest opacity-60">Catálogo de Productos</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setShowCategoryModal(false)}
+                      className="md:hidden p-2 text-dust hover:text-espresso"
+                    >
+                      <X size={20} />
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="font-serif text-xl text-espresso">{selectedCategoryName}</h3>
-                    <p className="text-xs text-dust">Productos disponibles en esta categoría</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowCategoryModal(false)}
-                  className="p-2 hover:bg-black/5 rounded-full transition-colors text-dust hover:text-espresso"
-                >
-                  <X size={24} />
-                </button>
-              </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {products
-                    .filter(p => p.category === selectedCategoryName)
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((product, index) => (
-                      <button
-                        key={`${product.id}-${index}`}
-                        id={`pos-modal-product-${product.id}`}
-                        onClick={() => {
-                          handleAddToCart(product);
-                        }}
-                        disabled={product.stock <= 0}
-                        className={cn(
-                          "p-4 border rounded-2xl flex items-center justify-between transition-all group disabled:opacity-50 text-left",
-                          getCategoryStyle(product.category).bg,
-                          getCategoryStyle(product.category).border,
-                          "hover:shadow-md hover:bg-white"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                            getCategoryStyle(product.category).color,
-                            "text-white"
-                          )}>
-                            {(() => {
-                              const Icon = getProductIcon(product.icon, product.category);
-                              return <Icon size={20} />;
-                            })()}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-ink">{product.name}</div>
-                            <div className="text-[10px] text-dust font-medium">Stock: {product.stock}</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-serif text-sm font-bold text-espresso group-hover:text-bark">
-                            {formatCurrency(product.price)}
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  }
-                </div>
-                {products.filter(p => p.category === selectedCategoryName).length === 0 && (
-                  <div className="text-center py-20 text-dust italic text-sm">
-                    No hay productos en esta categoría.
+                  <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-cream/10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                      {products
+                        .filter(p => p.category === selectedCategoryName)
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((product, index) => (
+                          <button
+                            key={`${product.id}-${index}`}
+                            id={`pos-modal-product-${product.id}`}
+                            onClick={() => {
+                              handleAddToCart(product);
+                            }}
+                            disabled={product.stock <= 0}
+                            className={cn(
+                              "p-3 md:p-4 border rounded-xl md:rounded-2xl flex items-center justify-between transition-all group disabled:opacity-50 text-left bg-white shadow-sm hover:shadow-md",
+                              getCategoryStyle(product.category).border,
+                              "hover:border-gold"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                              <div className={cn(
+                                "w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 shadow-inner",
+                                getCategoryStyle(product.category).color,
+                                "text-white"
+                              )}>
+                                {(() => {
+                                  const Icon = getProductIcon(product.icon, product.category);
+                                  return <Icon size={16} className="md:size-[20px]" />;
+                                })()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-bold text-ink truncate">{product.name}</div>
+                                <div className="text-[9px] md:text-[10px] text-dust font-bold uppercase tracking-wider">Stock: {product.stock}</div>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 ml-3">
+                              <div className="font-serif text-sm md:text-base font-bold text-espresso group-hover:text-bark transition-colors bg-cream/50 px-2 py-1 rounded-lg">
+                                {formatCurrency(product.price)}
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      }
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="p-4 bg-cream border-t border-parchment flex justify-between items-center shrink-0">
-                <div className="text-xs text-dust">
-                  {products.filter(p => p.category === selectedCategoryName).length} Productos
+                  <div className="p-4 bg-cream border-t border-parchment flex justify-between items-center shrink-0">
+                    <div className="text-[9px] md:text-[10px] text-dust font-bold uppercase tracking-widest bg-white/50 px-3 py-1 rounded-full border border-mist/20">
+                      {products.filter(p => p.category === selectedCategoryName).length} Opciones
+                    </div>
+                    <button 
+                      onClick={() => setShowCategoryModal(false)}
+                      className="px-6 md:px-8 py-2 md:py-2.5 bg-espresso text-cream rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-bark transition-all shadow-md"
+                    >
+                      Cerrar Vista
+                    </button>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => setShowCategoryModal(false)}
-                  className="px-8 py-2.5 bg-espresso text-cream rounded-xl font-bold text-xs hover:bg-bark transition-colors shadow-lg shadow-espresso/20"
-                >
-                  Cerrar
-                </button>
+
+                {/* Integrated Cart inside Modal */}
+                <div className="flex flex-col w-full md:w-[360px] shrink-0 bg-parchment/10 border-t md:border-t-0 md:border-l border-parchment overflow-hidden h-64 md:h-full">
+                  <div className="w-full h-full p-2 md:p-4">
+                    <CartView 
+                      cart={posCart}
+                      removeFromCart={removeFromCart}
+                      updateCartQuantity={updateCartQuantity}
+                      cartTotal={cartTotal}
+                      activePendingAccount={activePendingAccount}
+                      onUpdatePendingAccount={onUpdatePendingAccount}
+                      isMobile={true}
+                      onCloseMobile={() => setShowMobileCart(false)}
+                      customerName={posCustomerName}
+                      setCustomerName={setPosCustomerName}
+                      quickCheckout={handleQuickCheckout}
+                      hideCheckout={true}
+                    />
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>

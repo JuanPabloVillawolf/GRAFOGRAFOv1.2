@@ -30,10 +30,10 @@ Diversos autores señalan que la visualización de datos permite mejorar la comp
 
 En distintos sectores, la implementación de dashboards ha permitido optimizar procesos, reducir tiempos de análisis y mejorar la eficiencia organizacional mediante la democratización del acceso a la información (Power, 2008). No obstante, muchas organizaciones de pequeña escala aún presentan limitaciones significativas en la forma en que gestionan y presentan su información, dependiendo de métodos tradicionales que no permiten un análisis prospectivo.
 
-En el caso de la librería-cafetería objeto de este estudio, la información se gestiona actualmente mediante registros manuales o herramientas de oficina básicas sin vinculación entre procesos, lo que genera dificultades para el análisis oportuno, falta de claridad en las cuentas pendientes y una toma de decisiones fundamentada más en la intuición que en la evidencia de datos.
+En el caso de la Librería-Cafetería Grafógrafo, objeto de este estudio, la información se gestiona actualmente mediante registros manuales o herramientas de oficina básicas sin vinculación entre procesos, lo que genera dificultades para el análisis oportuno, falta de claridad en las cuentas pendientes y una toma de decisiones fundamentada más en la intuición que en la evidencia de datos.
 
 ### 1.2 Planteamiento del Problema
-Actualmente, la librería-cafetería no cuenta con una herramienta que permita visualizar de forma integrada la información necesaria para la toma de decisiones. La información de ventas, inventario de libros y consumibles de cafetería se encuentra dispersa o no registrada formalmente, lo que dificulta su análisis y limita la identificación de patrones de consumo y tendencias de inventario.
+Actualmente, la Librería-Cafetería Grafógrafo no cuenta con una herramienta que permita visualizar de forma integrada la información necesaria para la toma de decisiones. La información de ventas, inventario de libros y consumibles de cafetería se encuentra dispersa o no registrada formalmente, lo que dificulta su análisis y limita la identificación de patrones de consumo y tendencias de inventario.
 
 **Problema central:** La ausencia de un sistema digital y un dashboard que integre y visualice información clave de ventas e inventario limita la toma de decisiones oportunas y fundamentadas, poniendo en riesgo la rentabilidad y el control operativo del negocio.
 
@@ -112,8 +112,10 @@ El diseño se rige por principios de claridad y eficiencia visual. La estructura
 
 ## CAPÍTULO IV. DESARROLLO DEL DASHBOARD
 
-### 4.1 Preparación Final de los Datos
-Para el desarrollo del dashboard se utilizaron los datos provenientes de la operación real de la librería-cafetería, correspondientes al periodo de implementación inicial. Antes de su visualización, se realizó una validación en el servidor (Node.js) para asegurar la consistencia de la información. Entre las acciones realizadas se incluyen la verificación de formatos JSON para los ítems de ventas, la revisión de valores nulos en el inventario y la validación de totales, garantizando que los indicadores reflejen la realidad financiera del negocio.
+### 4.1 Preparación Final de los Datos y Sincronización
+Para el desarrollo del dashboard se utilizaron los datos provenientes de la operación real de la librería-cafetería Grafógrafo. Una innovación técnica clave implementada fue el mecanismo de **sincronización inmediata (eager sync)** para el módulo de cuentas pendientes. A diferencia de las ventas estándar que pueden agruparse, las cuentas abiertas se sincronizan de forma atómica con Google Sheets después de cada abono o modificación de ítems. Esto garantiza la persistencia de la información ante cierres inesperados de sesión y mantiene la integridad de la deuda del cliente en la nube.
+
+Asimismo, se implementó una estandarización de la zona horaria mediante la configuración explícita de `America/Mexico_City` en todas las funciones de generación de marcas de tiempo (timestamps). Esto resolvió la problemática de registros con horarios desfasados debido a la ubicación de los servidores de ejecución, asegurando que los reportes de ventas y movimientos de inventario coincidan exactamente con la hora local de operación del establecimiento.
 
 ### 4.2 Estructura del Dashboard
 El dashboard se estructuró en secciones estratégicas para facilitar la navegación. La interfaz principal presenta un resumen ejecutivo, mientras que secciones secundarias permiten profundizar en el inventario y las cuentas pendientes.
@@ -152,7 +154,7 @@ La aplicación permite al usuario interactuar con los datos mediante:
 A partir de la implementación del dashboard, se han identificado patrones que antes eran invisibles en el registro manual. Se observa una tendencia de mayor consumo en la cafetería durante las primeras horas del día, mientras que las ventas de librería se concentran en horarios vespertinos. Asimismo, la visualización del inventario permitió identificar productos con baja rotación ("stock muerto") que ocupaban espacio valioso en los estantes.
 
 ### 5.2 Utilidad del Dashboard para la Toma de Decisiones
-La herramienta ha demostrado ser clave para decisiones operativas inmediatas. Por ejemplo, la visualización del "Inventario Crítico" permite realizar pedidos a proveedores de manera proactiva, evitando la pérdida de ventas por falta de producto. En el área financiera, el seguimiento de "Cuentas Abiertas" ha mejorado la recuperación de efectivo al tener claridad sobre quién debe y cuánto, eliminando el olvido de cobros comunes en el sistema manual.
+La herramienta ha demostrado ser clave para decisiones operativas inmediatas. Por ejemplo, la visualización del "Inventario Crítico" permite realizar pedidos a proveedores de manera proactiva, evitando la pérdida de ventas por falta de producto. En el área financiera, el seguimiento de "Cuentas Abiertas" ha mejorado la recuperación de efectivo al tener claridad sobre quién debe y cuánto, eliminando el olvido de cobros comunes en el sistema manual gracias a la sincronización en tiempo real que evita discrepancias entre la aplicación y el registro físico/nube.
 
 ### 5.3 Limitaciones del Desarrollo Actual
 A pesar de su funcionalidad, el sistema presenta limitaciones:
@@ -202,10 +204,9 @@ Desde el punto de vista organizacional, se recomienda establecer un protocolo de
 *   **Estructura:** Hojas de Inventario, Ventas, Movimientos, Usuarios, Caja, Gastos y Cuentas.
 *   **Variables:** ID, Fecha, Producto, Cantidad, Precio, Método de Pago, Usuario (para trazabilidad), etc.
 
-### Anexo C. Diccionario de Indicadores
-*   **Ventas Totales:** Suma de columna 'Total' en hoja Ventas.
-*   **Stock Crítico:** Conteo de productos con cantidad < 5.
-*   **Cuentas Pendientes:** Suma de saldos en hoja Cuentas.
+### Anexo C. Diccionario de Indicadores y Estructura Técnica
+*   **Documento:** `DICCIONARIO_DATOS.md`.
+*   **Contenido:** Definición técnica de KPIs, fórmulas de cálculo y descripción de campos en Google Sheets para asegurar la trazabilidad del sistema.
 
 ---
 

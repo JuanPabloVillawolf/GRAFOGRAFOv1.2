@@ -36,17 +36,18 @@ Ve a la sección **"Ventas"** en el menú:
 Aquí es donde controlas a quién le has entregado productos que aún no se pagan por completo:
 1. Ve a **"Cuentas Abiertas"**.
 2. Verás una lista con los nombres de los clientes y cuánto deben.
-3. **Abonar:** Si un cliente viene a pagar un poco, haz clic en su cuenta y registra el monto.
-4. **Liquidar:** Cuando la deuda llegue a cero, la cuenta se cerrará automáticamente y pasará a tus ventas del día.
+3. **Sincronización Inmediata:** Cada cambio que hagas (abono, agregar producto o liquidar) se guarda automáticamente en tu Google Sheet al instante. No necesitas esperar cierres de sesión.
+4. **Liquidar:** Cuando la deuda se paga totalmente, la cuenta se cierra y se registra como una venta final en la fecha exacta.
+5. **Horarios Exactos:** Todos tus registros ahora usan la hora de **Ciudad de México**, asegurando que tus reportes sean precisos.
 
 ---
 
-## 5. Control de Inventario
+## 5. Control de Inventario y Movimientos
 Para que nunca te falte nada:
 1. Ve a **"Inventario"**.
-2. Verás la lista de todos tus libros y productos de cafetería.
-3. **Agregar Stock:** Si te llega mercancía nueva, usa el botón de editar para sumar las piezas que llegaron.
-4. **Búsqueda:** Usa la barra de búsqueda para encontrar rápidamente un libro por su nombre.
+2. **Agregar Stock:** Si llega mercancía nueva, usa el botón de editar para sumar piezas.
+3. **Historial de Movimientos:** Ahora puedes ver un registro detallado de quién hizo cada cambio, a qué hora y por qué (venta, entrada o ajuste manual).
+4. **Alertas:** El sistema te avisará con colores si un producto está por agotarse.
 
 ---
 
