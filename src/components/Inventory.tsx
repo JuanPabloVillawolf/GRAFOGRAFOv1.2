@@ -255,7 +255,7 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                   <h4 className="text-[10px] font-bold text-dust uppercase tracking-[0.2em]">Resultados de búsqueda</h4>
                   <button onClick={() => setSearchTerm('')} className="text-[10px] font-bold text-gold uppercase hover:underline">Limpiar</button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {products
                     .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
                     .map((product, index) => {
@@ -264,40 +264,61 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                       const isCritical = product.stock <= 5;
                       return (
                         <div key={`${product.id}-${index}`} className={cn(
-                          "bg-white border p-3 rounded-2xl flex items-center justify-between group transition-all hover:shadow-lg gap-3",
-                          isCritical ? "border-red-200 bg-red-50/30" : "border-parchment"
+                           "bg-white border rounded-[2rem] p-5 flex flex-col justify-between group transition-all hover:shadow-xl hover:-translate-y-1 relative overflow-hidden",
+                           isCritical ? "border-red-200 bg-red-50/30" : "border-parchment"
                         )}>
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <div className={cn(
-                              "w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 shrink-0 shadow-sm",
-                              isCritical ? "bg-red-500 text-dust" : cn(style.color, style.text)
-                            )}>
-                              <Icon size={20} />
+                          {isCritical && (
+                            <div className="absolute top-0 right-0 px-3 py-1 bg-red-500 text-white text-[8px] font-bold uppercase tracking-widest rounded-bl-xl shadow-sm z-10">
+                              Bajo
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-bold text-espresso truncate">{product.name}</div>
-                              <div className="text-[10px] font-bold text-dust uppercase tracking-wider flex items-center gap-1.5 truncate">
-                                <span className="opacity-50">{product.category}</span>
-                                <span className={cn(
-                                  "px-1.5 py-0.5 rounded border",
-                                  isCritical ? "bg-red-100 text-red-600 border-red-200" : "bg-parchment/50 text-dust border-parchment"
+                          )}
+                          
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between">
+                              <div className={cn(
+                                 "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                                 isCritical ? "bg-red-500 text-white" : cn(style.color, style.text)
+                              )}>
+                                <Icon size={20} />
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[10px] font-bold text-dust uppercase tracking-widest">Existencia</div>
+                                <div className={cn(
+                                  "text-lg font-serif font-bold",
+                                  isCritical ? "text-red-500" : "text-espresso"
                                 )}>
-                                  {product.stock} un.
-                                </span>
+                                  {product.stock} <span className="text-[10px] uppercase">un.</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-espresso leading-tight truncate">{product.name}</div>
+                              <div className="text-[10px] font-bold text-dust uppercase tracking-wider mt-1 opacity-60">
+                                {product.category}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="number"
-                              className="w-14 bg-cream border border-parchment rounded-lg py-1.5 px-2 text-xs font-bold text-center"
-                              placeholder="±"
-                              value={stockUpdates[product.id] || ''}
-                              onChange={(e) => handleStockChange(product.id, e.target.value)}
-                            />
+
+                          <div className="mt-4 pt-4 border-t border-parchment flex items-center gap-2">
+                            <div className="flex-1">
+                              <input 
+                                type="number"
+                                className="w-full bg-cream border border-parchment rounded-xl py-1.5 px-3 text-xs font-bold text-center focus:border-gold transition-all"
+                                placeholder="+/-"
+                                value={stockUpdates[product.id] || ''}
+                                onChange={(e) => handleStockChange(product.id, e.target.value)}
+                              />
+                            </div>
                             <button 
                               onClick={() => handleSave(product)}
-                              className="p-2 bg-espresso text-cream rounded-lg hover:bg-bark transition-colors"
+                              disabled={!stockUpdates[product.id]}
+                              className={cn(
+                                "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
+                                stockUpdates[product.id] 
+                                  ? "bg-espresso text-cream shadow-lg hover:bg-bark" 
+                                  : "bg-parchment/50 text-dust cursor-not-allowed"
+                              )}
                             >
                               <Save size={14} />
                             </button>
@@ -323,26 +344,26 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                       key={cat}
                       onClick={() => setExpandedCategory(cat)}
                       className={cn(
-                        "w-full aspect-square p-4 rounded-[2rem] border transition-all flex flex-col items-center justify-center gap-4 group bg-white border-parchment text-espresso hover:border-gold shadow-sm hover:shadow-xl hover:-translate-y-1",
+                        "w-full p-4 rounded-[2.5rem] border transition-all flex flex-col items-center justify-center gap-3 group bg-white border-parchment text-espresso hover:border-gold shadow-sm hover:shadow-xl hover:-translate-y-1 min-h-[140px] md:min-h-[160px]",
                         style.bg.replace('bg-', 'hover:bg-').replace('/10', '/20')
                       )}
                     >
-                      <div className="relative">
+                      <div className="relative shrink-0">
                         <div className={cn(
-                          "w-16 h-16 sm:w-20 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3 shadow-sm",
+                          "w-14 h-14 sm:w-16 sm:h-16 rounded-[1.5rem] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3 shadow-sm",
                           style.color, style.text
                         )}>
-                          <Icon size={32} className="sm:size-10" />
+                          <Icon size={28} className="sm:size-8" />
                         </div>
                         {criticalCount > 0 && (
-                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-lg animate-bounce">
                             {criticalCount}
                           </div>
                         )}
                       </div>
-                      <div className="text-center space-y-1">
-                        <span className="font-serif text-sm sm:text-base font-bold tracking-tight block truncate w-full px-1">{cat}</span>
-                        <span className="text-[10px] text-dust font-bold uppercase tracking-widest hidden sm:block">
+                      <div className="text-center space-y-1 w-full px-1">
+                        <span className="font-serif text-[11px] sm:text-sm font-bold tracking-tight block leading-tight line-clamp-2 min-h-[2.4em] flex items-center justify-center">{cat}</span>
+                        <span className="text-[9px] text-dust font-bold uppercase tracking-widest block opacity-60">
                           {catProducts.length} items
                         </span>
                       </div>
@@ -475,7 +496,7 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
               </div>
 
               <div className="flex-1 overflow-auto p-4 md:p-10 bg-cream/5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {products
                     .filter(p => p.category === expandedCategory)
                     .map((product, index) => {
@@ -484,45 +505,64 @@ export function Inventory({ products, onUpdateStock, onAddProduct }: InventoryPr
                       const isCritical = product.stock <= 5;
                       return (
                         <div key={`${product.id}-${index}`} className={cn(
-                           "bg-white border p-3 md:p-6 rounded-2xl md:rounded-[2.5rem] flex items-center justify-between group transition-all hover:shadow-xl gap-3",
-                           isCritical ? "border-red-200 bg-red-50/50" : "border-parchment"
+                           "bg-white border rounded-[2rem] p-5 md:p-6 flex flex-col justify-between group transition-all hover:shadow-xl hover:-translate-y-1 relative overflow-hidden",
+                           isCritical ? "border-red-200 bg-red-50/30" : "border-parchment"
                         )}>
-                          <div className="flex items-center gap-3 md:gap-5 min-w-0 flex-1">
-                            <div className={cn(
-                               "w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110",
-                               isCritical ? "bg-red-500 text-dust shadow-lg" : cn(style.color, style.text, "shadow-md")
-                            )}>
-                              <Icon size={20} className="md:size-7" />
+                          {isCritical && (
+                            <div className="absolute top-0 right-0 px-3 py-1 bg-red-500 text-white text-[8px] font-bold uppercase tracking-widest rounded-bl-xl shadow-sm z-10">
+                              Stock Bajo
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs md:text-base font-bold text-espresso truncate">{product.name}</div>
+                          )}
+                          
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between">
                               <div className={cn(
-                                "text-[9px] md:text-[11px] font-bold uppercase tracking-[0.1em] truncate px-2 py-0.5 rounded border w-fit mt-1",
-                                isCritical ? "bg-red-100 text-red-600 border-red-200" : "bg-cream/80 text-dust border-mist/30"
+                                 "w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110 shadow-sm",
+                                 isCritical ? "bg-red-500 text-white" : cn(style.color, style.text)
                               )}>
-                                {isCritical ? '⚠️ Stock' : 'Stock'}: {product.stock} un.
+                                <Icon size={24} className="md:size-7" />
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[10px] font-bold text-dust uppercase tracking-widest">Stock Actual</div>
+                                <div className={cn(
+                                  "text-xl font-serif font-bold",
+                                  isCritical ? "text-red-500" : "text-espresso"
+                                )}>
+                                  {product.stock} <span className="text-[10px] uppercase">un.</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="text-sm md:text-base font-bold text-espresso leading-tight">{product.name}</div>
+                              <div className="text-[10px] font-bold text-dust uppercase tracking-wider mt-1 opacity-60">
+                                {product.category}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                            <div className="flex flex-col items-center">
-                              <span className="text-[8px] md:text-[9px] font-bold text-dust uppercase tracking-widest mb-1">Ajuste</span>
+
+                          <div className="mt-5 pt-5 border-t border-parchment flex items-center gap-3">
+                            <div className="flex-1">
+                              <div className="text-[8px] font-bold text-dust uppercase tracking-widest mb-1.5 ml-1">Ajuste ±</div>
                               <input 
                                 type="number"
-                                className="w-12 md:w-16 bg-cream border border-parchment rounded-lg md:rounded-xl py-1.5 md:py-2.5 px-1 md:px-2 text-xs font-bold text-center focus:border-gold transition-all"
-                                placeholder="±"
+                                className="w-full bg-cream border border-parchment rounded-xl py-2 px-3 text-xs font-bold text-center focus:border-gold transition-all"
+                                placeholder="0"
                                 value={stockUpdates[product.id] || ''}
                                 onChange={(e) => handleStockChange(product.id, e.target.value)}
                               />
                             </div>
                             <button 
                               onClick={() => handleSave(product)}
+                              disabled={!stockUpdates[product.id]}
                               className={cn(
-                                "p-2 md:p-3 rounded-lg md:rounded-2xl transition-all self-end",
-                                stockUpdates[product.id] ? "bg-gold text-espresso shadow-lg hover:scale-105" : "bg-parchment/50 text-dust opacity-50"
+                                "w-11 h-11 rounded-xl flex items-center justify-center transition-all self-end",
+                                stockUpdates[product.id] 
+                                  ? "bg-espresso text-cream shadow-lg hover:bg-bark" 
+                                  : "bg-parchment/50 text-dust cursor-not-allowed"
                               )}
                             >
-                              <Save size={16} className="md:size-[20px]" />
+                              <Save size={18} />
                             </button>
                           </div>
                         </div>

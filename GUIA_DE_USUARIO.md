@@ -32,22 +32,24 @@ Ve a la sección **"Ventas"** en el menú:
 
 ---
 
-## 4. Cuentas Abiertas (Ventas Fiadas o Pendientes)
+## 4. Cuentas Pendientes (Ventas Fiadas)
 Aquí es donde controlas a quién le has entregado productos que aún no se pagan por completo:
 1. Ve a **"Cuentas Abiertas"**.
 2. Verás una lista con los nombres de los clientes y cuánto deben.
-3. **Sincronización Inmediata:** Cada cambio que hagas (abono, agregar producto o liquidar) se guarda automáticamente en tu Google Sheet al instante. No necesitas esperar cierres de sesión.
+3. **Sincronización Inmediata:** Cada cambio que hagas (abono, agregar producto o liquidar) se guarda automáticamente en la hoja de "Cuentas Pendientes" de tu Google Sheet al instante. No necesitas esperar a cerrar la sesión.
 4. **Liquidar:** Cuando la deuda se paga totalmente, la cuenta se cierra y se registra como una venta final en la fecha exacta.
-5. **Horarios Exactos:** Todos tus registros ahora usan la hora de **Ciudad de México**, asegurando que tus reportes sean precisos.
+5. **Horarios Exactos:** Todos tus registros usan la hora de **Tijuana/Ciudad de México**, asegurando que tus reportes sean precisos según tu ubicación.
 
 ---
 
-## 5. Control de Inventario y Movimientos
+## 5. Control de Inventario por Categorías
 Para que nunca te falte nada:
 1. Ve a **"Inventario"**.
-2. **Agregar Stock:** Si llega mercancía nueva, usa el botón de editar para sumar piezas.
-3. **Historial de Movimientos:** Ahora puedes ver un registro detallado de quién hizo cada cambio, a qué hora y por qué (venta, entrada o ajuste manual).
-4. **Alertas:** El sistema te avisará con colores si un producto está por agotarse.
+2. **Exploración Visual:** Los productos están organizados por categorías (Café, Tés, Snacks, Libros, etc.) en tarjetas grandes que te indican cuántos artículos hay de cada tipo.
+3. **Consultas Rápidas:** Haz clic en una categoría para ver los productos específicos.
+4. **Agregar Stock:** Usa directamente el campo de "Ajuste ±" en la tarjeta del producto para sumar piezas (ej. `+5`) o restarlas (ej. `-2`) y haz clic en el botón de guardar.
+5. **Alertas Visuales:** Los productos con stock bajo (5 unidades o menos) aparecerán resaltados en rojo para llamar tu atención rápidamente.
+6. **Historial de Movimientos:** Consulta el registro detallado para saber quién, cuándo y por qué cambió el inventario.
 
 ---
 
@@ -59,10 +61,11 @@ Para llevar un control real de tus ganancias, debes registrar lo que gastas (luz
 
 ---
 
-## 7. Consejos Importantes
-*   **Sincronización:** Verás un mensaje que dice "Guardando..." en la parte superior. Espera a que diga "Sincronizado" antes de cerrar la página para asegurar que todo esté en tu Google Sheet.
+## 7. Solución de Detalles Comunes
+*   **"Error al Sincronizar":** Generalmente sucede si el internet falla por un momento. El sistema intentará guardar de nuevo automáticamente. Si el problema persiste, revisa que tu sesión de Google siga activa.
+*   **"Datos Desactualizados":** Si sientes que la información que ves no es la más reciente, usa el botón de actualizar en tu navegador o espera unos segundos a que el sistema complete su ciclo de lectura.
 *   **Cierre de Sesión:** Si compartes computadora, recuerda cerrar tu sesión al terminar el turno por seguridad.
-*   **Google Sheets:** No borres ni cambies el nombre de las columnas en tu archivo de Excel (Google Sheets) directamente, ya que la aplicación podría dejar de encontrar la información.
+*   **Google Sheets:** No borres, cambies el nombre ni muevas las columnas en tu archivo de Google Sheets directamente, ya que la aplicación depende de ese orden exacto para leer correctamente.
 
 ---
-*¡Listo! Con esto ya puedes empezar a digitalizar tu cafetería y librería.*
+*¡Listo! Con esto ya puedes empezar a digitalizar tu cafetería y librería Grafógrafo de manera profesional.*

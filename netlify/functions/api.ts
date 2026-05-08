@@ -89,7 +89,7 @@ app.post("/api/sheets/data", async (req, res) => {
       { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
       { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
       { title: "Gastos", headers: ["ID", "Fecha/Hora", "Concepto", "Monto", "Categoría", "Usuario", "Notas"] },
-      { title: "Cuentas", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)", "Estado"] }
+      { title: "Cuentas Pendientes", headers: ["ID", "Cliente", "Fecha Creación", "Última Actualización", "Items (JSON)", "Pagos (JSON)", "Estado"] }
     ];
 
     for (const reqSheet of requiredSheets) {
@@ -120,7 +120,7 @@ app.post("/api/sheets/data", async (req, res) => {
 
     const batchRes = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
-      ranges: requiredSheets.map(s => `${s.title}!A2:I`)
+      ranges: requiredSheets.map(s => `${s.title}!A2:L`)
     });
 
     const valueRanges = batchRes.data.valueRanges || [];
@@ -184,15 +184,29 @@ app.post("/api/sheets/data", async (req, res) => {
       notes: row[4] || ""
     })).reverse();
 
-    const pendingAccounts = getSheetValues("Cuentas").map(row => ({
-      id: row[0],
-      customerName: row[1],
-      createdAt: row[2],
-      updatedAt: row[3],
-      items: JSON.parse(row[4] || "[]"),
-      payments: JSON.parse(row[5] || "[]"),
-      status: row[6] || 'Abierta'
-    }));
+    const pendingAccounts = getSheetValues("Cuentas Pendientes").map(row => {
+      let items = [];
+      let payments = [];
+      try {
+        items = JSON.parse(row[4] || "[]");
+      } catch (e) {
+        console.error("Error parsing items JSON:", row[4]);
+      }
+      try {
+        payments = JSON.parse(row[5] || "[]");
+      } catch (e) {
+        console.error("Error parsing payments JSON:", row[5]);
+      }
+      return {
+        id: row[0],
+        customerName: row[1],
+        createdAt: row[2],
+        updatedAt: row[3],
+        items,
+        payments,
+        status: row[6] || 'Abierta'
+      };
+    });
 
     res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts });
   } catch (error: any) {
@@ -495,7 +509,7 @@ app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
 
     await sheets.spreadsheets.values.clear({
       spreadsheetId,
-      range: "Cuentas!A2:Z"
+      range: "Cuentas Pendientes!A2:Z"
     });
 
     if (accounts.length > 0) {
@@ -511,7 +525,7 @@ app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
 
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: "Cuentas!A2",
+        range: "Cuentas Pendientes!A2",
         valueInputOption: "USER_ENTERED",
         requestBody: { values }
       });

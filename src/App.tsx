@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { SalesPOS } from './components/SalesPOS';
@@ -48,12 +48,22 @@ export default function App() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  
+  const lastSyncedAccountsRef = useRef<string>('');
+  const isSyncInProgressRef = useRef<boolean>(false);
 
   const syncPendingAccounts = async (accountsToSync?: PendingAccount[]) => {
     // CRITICAL: Only sync if data has been successfully loaded from the sheet first
     // to avoid overwriting the sheet with an empty local state on startup
     if (!googleTokens || !templateId || isAuthChecking || !isDataLoaded) return;
     
+    const accounts = accountsToSync || pendingAccounts;
+    const accountsJson = JSON.stringify(accounts);
+    
+    // Skip if same as last sync or if a sync is already in progress
+    if (accountsJson === lastSyncedAccountsRef.current || isSyncInProgressRef.current) return;
+    
+    isSyncInProgressRef.current = true;
     setIsSyncing(true);
     try {
       const response = await fetch('/api/sheets/pending-accounts/sync', {
@@ -62,16 +72,22 @@ export default function App() {
         body: JSON.stringify({ 
           tokens: googleTokens, 
           spreadsheetId: templateId, 
-          accounts: accountsToSync || pendingAccounts 
+          accounts 
         }),
       });
+      
       if (response.ok) {
         setLastSyncTime(new Date());
+        lastSyncedAccountsRef.current = accountsJson;
+      } else {
+        const result = await response.json();
+        console.error('Respuesta de error al sincronizar:', result.error || response.statusText);
       }
     } catch (error) {
-      console.error('Error syncing pending accounts:', error);
+      console.error('Error de red al sincronizar cuentas pendientes:', error);
     } finally {
       setIsSyncing(false);
+      isSyncInProgressRef.current = false;
     }
   };
 
@@ -203,6 +219,8 @@ export default function App() {
         // to avoid losing local changes during a poll
         if (!activePendingAccount) {
           setPendingAccounts(data.pendingAccounts);
+          // Update ref to avoid immediate re-sync of what we just downloaded
+          lastSyncedAccountsRef.current = JSON.stringify(data.pendingAccounts);
         }
       }
       if (data.cashLogs) {
