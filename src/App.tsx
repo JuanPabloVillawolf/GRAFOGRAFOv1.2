@@ -12,7 +12,7 @@ import { Expenses } from './components/Expenses';
 import { Sale, Product, Event, InventoryMovement, PendingAccount, Expense, CashLog } from './types';
 import { Settings, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, formatCurrency } from './lib/utils';
+import { cn, formatCurrency, getTodayMX } from './lib/utils';
 
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -21,6 +21,7 @@ export default function App() {
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [cashLogs, setCashLogs] = useState<CashLog[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [pendingAccounts, setPendingAccounts] = useState<PendingAccount[]>([]);
   const [activePendingAccount, setActivePendingAccount] = useState<PendingAccount | null>(null);
   const [posCart, setPosCart] = useState<any[]>([]);
@@ -125,9 +126,9 @@ export default function App() {
       const data = await response.json();
       if (data.success) {
         setHasCashFund(true);
-        const now = new Date();
-        const today = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-        localStorage.setItem('last_cash_fund_date', today);
+        const tjDate = getTodayMX();
+        const todayStr = `${String(tjDate.getDate()).padStart(2, '0')}/${String(tjDate.getMonth() + 1).padStart(2, '0')}/${tjDate.getFullYear()}`;
+        localStorage.setItem('last_cash_fund_date', todayStr);
       } else {
         alert('Error al registrar fondo de caja: ' + data.error);
       }
@@ -214,6 +215,7 @@ export default function App() {
       if (data.sales) setSales(data.sales);
       if (data.movements) setMovements(data.movements);
       if (data.expenses) setExpenses(data.expenses);
+      if (data.users) setUsers(data.users);
       if (data.pendingAccounts) {
         // Only update pending accounts if we are not currently editing one
         // to avoid losing local changes during a poll
@@ -226,13 +228,13 @@ export default function App() {
       if (data.cashLogs) {
         setCashLogs(data.cashLogs);
         // Check if there's a "Fondo Inicial" for today in the server data
-        const mxDate = new Date().toLocaleString('es-MX', { 
-          timeZone: 'America/Mexico_City',
+        const tjDate = new Date().toLocaleString('es-MX', { 
+          timeZone: 'America/Tijuana',
           day: '2-digit', 
           month: '2-digit', 
           year: 'numeric' 
         });
-        const todayStr = mxDate.split(',')[0]; // "DD/MM/YYYY"
+        const todayStr = tjDate.split(',')[0]; // "DD/MM/YYYY"
         
         const hasTodayFund = data.cashLogs.some((log: CashLog) => {
           if (log.type !== "Fondo Inicial") return false;
@@ -308,7 +310,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [googleTokens, templateId, currentUser, activePendingAccount]);
 
-  const handleAddSale = async (product: Product, quantity: number = 1, paymentMethod: string = 'Efectivo', totalAmount?: number, providedCustomerName?: string) => {
+  const handleAddSale = async (product: Product, quantity: number = 1, paymentMethod: string = 'Efectivo', totalAmount?: number, providedCustomerName?: string, overrideUsername?: string, note?: string) => {
     if (!googleTokens || !templateId || !currentUser) {
       if (!currentUser) alert('Debes iniciar sesión para realizar transacciones.');
       else {
@@ -317,6 +319,10 @@ export default function App() {
       }
       return;
     }
+
+    // Use current user if not overridden
+    const transactionUsername = overrideUsername || currentUser.username;
+
 
     // Special handling for Pending
     if (paymentMethod === 'Pendiente') {
@@ -330,7 +336,7 @@ export default function App() {
       const finalName = customerName.trim();
       const normalizedFinalName = finalName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-      const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
       
       let updatedAccounts: PendingAccount[] = [];
       setPendingAccounts(prev => {
@@ -405,30 +411,33 @@ export default function App() {
     const amount = totalAmount !== undefined ? totalAmount : (paymentMethod === 'Gratis' ? 0 : product.price * quantity);
     const newSale: Sale = {
       id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       productName: product.name,
       category: product.category,
       amount,
       quantity,
       paymentMethod,
-      username: currentUser.username,
+      username: transactionUsername,
+      note: note || ""
     };
 
     // Optimistic update
     setSales(prev => [newSale, ...prev]);
-    setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - quantity } : p));
-    
-    const newMovement: InventoryMovement = {
-      timestamp: newSale.timestamp,
-      productId: product.id,
-      productName: product.name,
-      type: "Salida (Venta)",
-      quantity: -quantity,
-      stockResult: product.stock - quantity,
-      notes: `Venta ID: ${newSale.id}`,
-      username: currentUser.username
-    };
-    setMovements(prev => [newMovement, ...prev]);
+    if (quantity !== 0) {
+      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - quantity } : p));
+      
+      const newMovement: InventoryMovement = {
+        timestamp: newSale.timestamp,
+        productId: product.id,
+        productName: product.name,
+        type: "Salida (Venta)",
+        quantity: -quantity,
+        stockResult: product.stock - quantity,
+        notes: `Venta ID: ${newSale.id}`,
+        username: transactionUsername
+      };
+      setMovements(prev => [newMovement, ...prev]);
+    }
 
     try {
       const response = await fetch('/api/sheets/sale', {
@@ -437,7 +446,7 @@ export default function App() {
         body: JSON.stringify({ 
           tokens: googleTokens, 
           spreadsheetId: templateId, 
-          sale: newSale,
+          sale: { ...newSale, username: transactionUsername },
           productId: product.id
         }),
       });
@@ -464,7 +473,7 @@ export default function App() {
   const handleUpdatePendingAccountItems = async (items: { product: Product, quantity: number }[]) => {
     if (!googleTokens || !templateId || !currentUser || !activePendingAccount) return;
 
-    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
     
     // Calculate stock changes
     // We need to compare old items vs new items to know the delta
@@ -511,10 +520,11 @@ export default function App() {
     setActiveView('cuentas');
   };
 
-  const handlePayPendingAccount = async (account: PendingAccount, sessionPayments: { method: string, amount: number }[]) => {
+  const handlePayPendingAccount = async (account: PendingAccount, sessionPayments: { method: string, amount: number }[], overrideUsername?: string) => {
     if (!googleTokens || !templateId || !currentUser) return;
 
-    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const transactionUsername = overrideUsername || currentUser.username;
+    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
     const totalAccount = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const previousPaid = account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
     const sessionTotal = sessionPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -522,85 +532,67 @@ export default function App() {
 
     try {
       if (isFullyPaid) {
-        // If fully paid, record all items as sales
-        // We distribute the items across the payment methods used in this session + previous if any
-        // For simplicity, we'll just record all items with the first payment method of this session
-        // or a combined description if multiple methods were used.
+        // If fully paid, record all items as individual sales split by ALL payments (previous + session)
+        const allPayments = [
+          ...(account.payments || []).map(p => ({ method: p.method, amount: p.amount })),
+          ...sessionPayments
+        ];
         
-        const paymentMethodDesc = sessionPayments
-          .map(p => `${p.method}: ${formatCurrency(p.amount)}`)
-          .join(' + ');
+        // We calculate total actually paid to handle cases with tips or partial overpayment if any
+        const actualTotalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
 
         for (const item of account.items) {
-          const newSale: Sale = {
-            id: Math.random().toString(36).substr(2, 9),
-            timestamp: now,
-            productName: item.productName,
-            category: item.category,
-            amount: item.price * item.quantity,
-            quantity: item.quantity,
-            paymentMethod: paymentMethodDesc,
-            username: currentUser.username,
-          };
-
-          setSales(prev => [newSale, ...prev]);
+          const itemTotal = item.price * item.quantity;
           
-          await fetch('/api/sheets/sale', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              tokens: googleTokens, 
-              spreadsheetId: templateId, 
-              sale: newSale,
-              productId: item.productId
-            }),
-          });
+          for (let pIdx = 0; pIdx < allPayments.length; pIdx++) {
+            const p = allPayments[pIdx];
+            // Distribute item price based on payment weights
+            const portion = (p.amount / actualTotalPaid) * itemTotal;
+            // Record inventory reduction only in the first payment row of this item
+            const qtyToRecord = pIdx === 0 ? item.quantity : 0;
+
+            const newSale: Sale = {
+              id: Math.random().toString(36).substr(2, 9),
+              timestamp: now,
+              productName: item.productName,
+              category: item.category,
+              amount: portion,
+              quantity: qtyToRecord,
+              paymentMethod: p.method,
+              username: transactionUsername,
+              note: `Liquidación cuenta: ${account.customerName}`
+            };
+
+            setSales(prev => [newSale, ...prev]);
+            
+            await fetch('/api/sheets/sale', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                tokens: googleTokens, 
+                spreadsheetId: templateId, 
+                sale: { ...newSale, username: transactionUsername },
+                productId: item.productId
+              }),
+            });
+          }
         }
 
         let updatedAccounts: PendingAccount[] = [];
         setPendingAccounts(prev => {
-          // Instead of marking as 'Pagada' in the list, we remove it
-          // so it disappears from "Cuentas Abiertas" as requested
-          // once it has been recorded as a final sale in the sales history/sheet.
           updatedAccounts = prev.filter(a => a.id !== account.id);
           return updatedAccounts;
         });
         
-        // Eagerly sync the removal
         syncPendingAccounts(updatedAccounts);
-
         if (activePendingAccount?.id === account.id) {
           setActivePendingAccount(null);
         }
       } else {
-        // Partial or session payment: Record as "Pago" sales
-        for (const p of sessionPayments) {
-          const pagoSale: Sale = {
-            id: Math.random().toString(36).substr(2, 9),
-            timestamp: now,
-            productName: `Pago Cuenta: ${account.customerName}`,
-            category: 'Otros',
-            amount: p.amount,
-            quantity: 1,
-            paymentMethod: p.method,
-            username: currentUser.username,
-          };
-
-          setSales(prev => [pagoSale, ...prev]);
-
-          await fetch('/api/sheets/sale', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              tokens: googleTokens, 
-              spreadsheetId: templateId, 
-              sale: pagoSale,
-              productId: 'pago' // Special ID for payments
-            }),
-          });
-        }
-
-        // Update the pending account with the new payments
+        // Partial session payment: We ONLY update the pending account tracking.
+        // We don't record individual sales yet to avoid double counting items later.
+        // The money is recorded in the PendingAccount.payments array.
+        
         const updatedAccount: PendingAccount = {
           ...account,
           updatedAt: now,
@@ -616,7 +608,6 @@ export default function App() {
           return updatedAccounts;
         });
         
-        // Eagerly sync partial payment
         syncPendingAccounts(updatedAccounts);
 
         if (activePendingAccount?.id === account.id) {
@@ -672,7 +663,7 @@ export default function App() {
     setProducts([...products, newProduct]);
 
     const newMovement: InventoryMovement = {
-      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
       productId: newProduct.id,
       productName: newProduct.name,
       type: "Alta de Producto",
@@ -711,7 +702,7 @@ export default function App() {
     if (product) {
       iconToSync = product.icon || getAutoIcon(product.category);
       const newMovement: InventoryMovement = {
-        timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
+        timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
         productId,
         productName: product.name,
         type: adjustment > 0 ? "Entrada" : "Ajuste/Salida",
@@ -748,7 +739,7 @@ export default function App() {
     const newExpense: Expense = {
       ...expenseData,
       id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Mexico_City' }),
+      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
       username: currentUser.username
     };
 
@@ -987,6 +978,7 @@ export default function App() {
               sales={sales} 
               products={products} 
               expenses={expenses} 
+              cashLogs={cashLogs}
             />
           )}
           {activeView === 'gastos' && (
@@ -1001,6 +993,7 @@ export default function App() {
               products={products} 
               onAddSale={handleAddSale} 
               sales={sales} 
+              users={users}
               pendingAccounts={pendingAccounts.filter(a => a.status === 'Abierta')}
               activePendingAccount={activePendingAccount}
               onCancelPending={() => setActivePendingAccount(null)}
@@ -1014,13 +1007,9 @@ export default function App() {
           {activeView === 'cuentas' && (
             <PendingAccounts 
               accounts={pendingAccounts.filter(a => a.status === 'Abierta')} 
-              onSelectAccount={(acc) => {
-                setActivePendingAccount(acc);
-                setActiveView('ventas');
-              }}
+              users={users}
               onDeleteAccount={handleDeletePendingAccount}
               onPayAccount={handlePayPendingAccount}
-              onUpdateAccount={handleUpdatePendingAccount}
             />
           )}
           {activeView === 'registros' && (

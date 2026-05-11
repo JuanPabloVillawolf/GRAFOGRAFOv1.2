@@ -13,7 +13,7 @@ Esta aplicación sirve como una herramienta integral de gestión que transiciona
 - **Gestión de Cuentas Pendientes (Abiertas):** Seguimiento seguro de abonos y consumos de clientes con **sincronización inmediata (eager sync)** a la nube para evitar pérdida de datos.
 - **Dashboard Estratégico:** Visualización interactiva de tendencias de ventas, ticket promedio y rendimiento por categorías.
 - **Integración con Google Sheets:** Utiliza la API de Google Sheets v4 como un backend NoSQL robusto, accesible y cost-efectivo.
-- **Estandarización de Zona Horaria:** Sincronización automática de todos los registros con la hora local de Ciudad de México (`America/Mexico_City`).
+- **Estandarización de Zona Horaria:** Sincronización automática de todos los registros con la hora local de Tijuana (`America/Tijuana`).
 - **Control de Gastos y Caja:** Módulo para registro de gastos operativos y seguimiento de fondo de caja diario.
 
 ## 🛠 Tech Stack

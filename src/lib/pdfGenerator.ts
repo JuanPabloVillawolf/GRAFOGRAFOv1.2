@@ -1,28 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Sale, Expense, CashLog } from '../types';
-import { formatCurrency } from './utils';
-
-// Helper to parse "DD/MM/YYYY HH:MM:SS" or similar es-MX strings
-const parseESDate = (str: string) => {
-  if (!str) return new Date();
-  const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (match) {
-    const day = parseInt(match[1]);
-    const month = parseInt(match[2]) - 1;
-    const year = parseInt(match[3]);
-    return new Date(year, month, day);
-  }
-  return new Date(str);
-};
-
-const isToday = (dateStr: string) => {
-  const date = parseESDate(dateStr);
-  const today = new Date();
-  return date.getDate() === today.getDate() &&
-         date.getMonth() === today.getMonth() &&
-         date.getFullYear() === today.getFullYear();
-};
+import { formatCurrency, parseESDate, isSameDay, getTodayMX } from './utils';
 
 const normalizeMethod = (method: string): string => {
   // Extract first part before space or parenthesis
@@ -36,11 +15,25 @@ const normalizeMethod = (method: string): string => {
     .replace(/^\w/, (c) => c.toUpperCase()); // Capitalize first letter
 };
 
-export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs: CashLog[]) => {
+export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs: CashLog[], requestedDate?: string) => {
   const doc = new jsPDF();
   const now = new Date();
-  const dateStr = now.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const timeStr = now.toLocaleTimeString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  
+  // If a specific date is requested, we use that for the report title and filtering
+  const reportDate = requestedDate ? parseESDate(requestedDate) : getTodayMX();
+  
+  const dateStr = reportDate.toLocaleDateString('es-MX', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric' 
+  });
+
+  const timeStr = new Date().toLocaleTimeString('es-MX', { 
+    timeZone: 'America/Tijuana',
+    hour12: false, 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
   
   const colors = {
     espresso: [44, 24, 16] as [number, number, number],
@@ -70,9 +63,9 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
   let y = 50;
 
   // --- DATA FILTERING ---
-  const todaySales = sales.filter(s => isToday(s.timestamp));
-  const todayExpenses = expenses.filter(e => isToday(e.timestamp));
-  const todayCashLogs = cashLogs.filter(log => isToday(log.timestamp));
+  const todaySales = sales.filter(s => isSameDay(s.timestamp, reportDate));
+  const todayExpenses = expenses.filter(e => isSameDay(e.timestamp, reportDate));
+  const todayCashLogs = cashLogs.filter(log => isSameDay(log.timestamp, reportDate));
 
   // --- CALCULATIONS ---
   const totalSales = todaySales.reduce((acc, s) => acc + s.amount, 0);

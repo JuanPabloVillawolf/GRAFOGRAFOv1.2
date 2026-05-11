@@ -206,7 +206,13 @@ app.post("/api/sheets/data", async (req, res) => {
       };
     });
 
-    res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts });
+    const users = getSheetValues("Usuarios").map(row => ({
+      username: row[0],
+      name: row[2],
+      role: row[3]
+    }));
+
+    res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts, users });
   } catch (error: any) {
     console.error("Error fetching data from sheets:", error);
     res.status(500).json({ error: error.message });

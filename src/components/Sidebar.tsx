@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LayoutDashboard, ShoppingCart, Package, Receipt, Coffee, History, Users, ArrowDownCircle } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, getTodayMX } from '../lib/utils';
 
 interface SidebarProps {
   activeView: string;
@@ -11,7 +11,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeView, setActiveView, currentUser, isOpen, onClose }: SidebarProps) {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(getTodayMX());
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -95,9 +95,10 @@ export function Sidebar({ activeView, setActiveView, currentUser, isOpen, onClos
           </div>
         )}
         <div>
-          <div className="capitalize font-medium text-white/50">{now.toLocaleDateString('es-MX', { weekday: 'long' })}</div>
+          <div className="capitalize font-medium text-white/50">{now.toLocaleDateString('es-MX', { weekday: 'long', timeZone: 'America/Tijuana' })}</div>
           <div className="text-white/30 text-sm mt-1">
-            {now.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {now.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Tijuana' })}
+            <span className="ml-2 opacity-50 uppercase text-[9px] tracking-tighter">TJ</span>
           </div>
         </div>
       </div>

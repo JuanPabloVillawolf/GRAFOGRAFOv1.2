@@ -28,7 +28,7 @@ Este documento detalla la lógica técnica de los indicadores visualizados en el
 
 ### Hoja: Ventas
 *   **ID:** Referencia única de la transacción.
-*   **Timestamp:** Fecha y hora completa (`America/Mexico_City`).
+*   **Timestamp:** Fecha y hora completa (`America/Tijuana`).
 *   **Producto:** Nombre del ítem vendido.
 *   **Monto:** Valor monetario de la línea de venta.
 *   **Cantidad:** Unidades vendidas.

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sale, Expense, CashLog } from '../types';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, parseESDate, getTodayMX } from '../lib/utils';
 import { Receipt, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateDailyReport } from '../lib/pdfGenerator';
 
@@ -12,19 +12,6 @@ interface SalesHistoryProps {
 
 export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
   const [selectedDayOffset, setSelectedDayOffset] = useState(0);
-
-  // Helper to parse "DD/MM/YYYY HH:MM:SS" or similar es-MX strings
-  const parseESDate = (str: string) => {
-    if (!str) return new Date();
-    const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (match) {
-      const day = parseInt(match[1]);
-      const month = parseInt(match[2]) - 1;
-      const year = parseInt(match[3]);
-      return new Date(year, month, day);
-    }
-    return new Date(str);
-  };
 
   // Group sales by date
   const groupedSales = sales.reduce((acc, sale) => {
@@ -40,7 +27,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
   }).slice(0, 5); // Max 5 days
 
   const currentDate = sortedDates[selectedDayOffset];
-  const currentSales = currentDate ? [...groupedSales[currentDate]].sort((a, b) => a.productName.localeCompare(b.productName)) : [];
+  const currentSales = currentDate ? [...groupedSales[currentDate]].sort((a, b) => parseESDate(b.timestamp).getTime() - parseESDate(a.timestamp).getTime()) : [];
   const currentTotal = currentSales.reduce((acc, s) => acc + s.amount, 0);
 
   return (
@@ -55,7 +42,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
             {currentDate && (
               <div className="flex items-center gap-2">
                 <span className="px-4 py-1.5 bg-espresso text-cream rounded-full text-xs font-bold uppercase tracking-widest">
-                  {currentDate === new Date().toLocaleDateString('es-MX') ? 'Hoy' : currentDate}
+                  {currentDate === getTodayMX().toLocaleDateString('es-MX') ? 'Hoy' : currentDate}
                 </span>
                 <span className="text-xs text-dust font-medium italic">
                   {currentSales.length} transacciones registradas
@@ -69,7 +56,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
               <span className="text-xl font-bold text-espresso">{formatCurrency(currentTotal)}</span>
             </div>
             <button 
-              onClick={() => generateDailyReport(sales, expenses, cashLogs)}
+              onClick={() => generateDailyReport(sales, expenses, cashLogs, currentDate || getTodayMX().toLocaleDateString('es-MX'))}
               disabled={currentSales.length === 0}
               className="px-6 py-2.5 bg-bark text-white rounded-xl font-bold text-xs hover:bg-espresso transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
             >
@@ -101,6 +88,11 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-bold text-espresso group-hover:text-bark transition-colors">{sale.productName}</div>
+                        {sale.note && (
+                          <div className="text-[10px] text-dust italic mt-0.5 truncate max-w-[200px]" title={sale.note}>
+                            Nota: {sale.note}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2.5 py-1 bg-parchment/40 text-bark rounded-lg text-[10px] font-bold uppercase tracking-tight">

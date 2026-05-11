@@ -17,7 +17,7 @@ import {
   User
 } from 'lucide-react';
 import { Expense } from '../types';
-import { cn } from '../lib/utils';
+import { cn, getTodayMX } from '../lib/utils';
 
 interface ExpensesProps {
   expenses: Expense[];
@@ -55,7 +55,7 @@ export function Expenses({ expenses, onAddExpense, isLoading }: ExpensesProps) {
     'Mantenimiento': Wrench,
     'Otros': Sparkles
   };
-  const todayStr = new Date().toLocaleDateString('es-MX');
+  const todayStr = getTodayMX().toLocaleDateString('es-MX');
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(e => 

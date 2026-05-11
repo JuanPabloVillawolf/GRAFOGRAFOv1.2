@@ -32,7 +32,8 @@ import {
   Wallet,
   Landmark,
   UserPlus,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -43,8 +44,9 @@ interface CartItem {
 
 interface SalesPOSProps {
   products: Product[];
-  onAddSale: (product: Product, quantity: number, paymentMethod: string, totalAmount?: number, customerName?: string) => void;
+  onAddSale: (product: Product, quantity: number, paymentMethod: string, totalAmount?: number, customerName?: string, overrideUsername?: string, note?: string) => Promise<void>;
   sales: Sale[];
+  users: any[];
   pendingAccounts: PendingAccount[];
   activePendingAccount?: PendingAccount | null;
   onCancelPending?: () => void;
@@ -109,17 +111,7 @@ function CartView({
           </div>
         </div>
 
-        {/* Reference / Customer Name - Always visible for quick access */}
-        <div className="relative group">
-          <UserPlus size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-dust group-focus-within:text-gold transition-colors" />
-          <input 
-            type="text"
-            value={customerName || ''}
-            onChange={(e) => setCustomerName?.(e.target.value)}
-            className="w-full bg-white border border-mist rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-gold focus:ring-2 focus:ring-gold/10 transition-all"
-            placeholder="Nombre o Mesa (Ref. opcional)"
-          />
-        </div>
+        {/* Empty space for internal spacing if needed, but removing the input as requested */}
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 min-h-[150px] max-h-[50vh] lg:max-h-none scrollbar-thin scrollbar-thumb-parchment">
@@ -375,6 +367,7 @@ export function SalesPOS({
   products, 
   onAddSale, 
   sales, 
+  users,
   pendingAccounts, 
   activePendingAccount, 
   onCancelPending,
@@ -390,10 +383,24 @@ export function SalesPOS({
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customItem, setCustomItem] = useState({ name: '', price: 0 });
   const [showMobileCart, setShowMobileCart] = useState(false);
+  
+  const [showUserSelection, setShowUserSelection] = useState(false);
+  const [currentSalesPayments, setCurrentSalesPayments] = useState<{method: string, amount: number}[]>([]);
+  const [pendingCheckoutMethod, setPendingCheckoutMethod] = useState<string | null>(null);
+  const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [posNote, setPosNote] = useState('');
+
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const cartTotal = useMemo(() => {
     return posCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   }, [posCart]);
+
+  const remainingPaymentBalance = useMemo(() => {
+    const paid = currentSalesPayments.reduce((sum, p) => sum + p.amount, 0);
+    return Math.max(0, cartTotal - paid);
+  }, [currentSalesPayments, cartTotal]);
 
   useEffect(() => {
     if (activePendingAccount) {
@@ -466,19 +473,119 @@ export function SalesPOS({
   const handleQuickCheckout = (method: string) => {
     if (posCart.length === 0) return;
 
-    if (method === 'Pendiente' && !posCustomerName.trim()) {
-      alert('Por favor, ingresa un nombre o mesa para la cuenta pendiente.');
+    if (method === 'Pendiente') {
+      // We no longer block here, we'll ask in the modal
+      setPendingCheckoutMethod('Pendiente');
+      setShowUserSelection(true);
       return;
     }
-    
-    // Process each item in cart as a sale
-    posCart.forEach(item => {
-      const amount = method === 'Gratis' ? 0 : (method === 'Pendiente' ? undefined : item.product.price * item.quantity);
-      onAddSale(item.product, item.quantity, method, amount, posCustomerName.trim());
-    });
 
-    setPosCart([]);
-    setPosCustomerName('');
+    if (method === 'Gratis') {
+      setCurrentSalesPayments([{ method: 'Gratis', amount: cartTotal }]);
+      setShowUserSelection(true);
+      return;
+    }
+
+    // Default: Add the selected method with the remaining balance
+    const amount = remainingPaymentBalance > 0 ? remainingPaymentBalance : cartTotal;
+    setCurrentSalesPayments([{ method, amount }]);
+    setPaymentAmountInput(amount.toString());
+    setShowUserSelection(true);
+  };
+
+  const addPaymentMethod = (method: string) => {
+    if (remainingPaymentBalance <= 0) return;
+    const newPayments = [...currentSalesPayments, { method, amount: remainingPaymentBalance }];
+    setCurrentSalesPayments(newPayments);
+    setPaymentAmountInput(remainingPaymentBalance.toString());
+  };
+
+  const removePaymentMethod = (index: number) => {
+    const newPayments = [...currentSalesPayments];
+    newPayments.splice(index, 1);
+    setCurrentSalesPayments(newPayments);
+    if (newPayments.length > 0) {
+      setPaymentAmountInput(newPayments[newPayments.length-1].amount.toString());
+    }
+  };
+
+  const updatePaymentAmount = (index: number, val: string) => {
+    const amount = parseFloat(val) || 0;
+    const newPayments = [...currentSalesPayments];
+    newPayments[index].amount = amount;
+    setCurrentSalesPayments(newPayments);
+    setPaymentAmountInput(val);
+  };
+
+  const finalizeCheckout = async (selectedUsername: string) => {
+    if (posCart.length === 0 || isProcessing) return;
+    setIsProcessing(true);
+
+    try {
+      if (pendingCheckoutMethod === 'Pendiente') {
+        let finalCustomerName = posNote.trim() || posCustomerName.trim();
+        
+        if (!selectedAccountId && !finalCustomerName) {
+          alert('Por favor, ingresa un nombre o referencia para la cuenta pendiente en el campo de "Nombre del Cliente".');
+          setIsProcessing(false);
+          return;
+        }
+
+        if (selectedAccountId) {
+          const acc = pendingAccounts.find(a => a.id === selectedAccountId);
+          if (acc) finalCustomerName = acc.customerName;
+        }
+
+        for (const item of posCart) {
+          await onAddSale(item.product, item.quantity, 'Pendiente', undefined, finalCustomerName, selectedUsername, posNote);
+        }
+      } else {
+        const totalPaid = currentSalesPayments.reduce((sum, p) => sum + p.amount, 0);
+        if (Math.abs(totalPaid - cartTotal) > 0.01 && currentSalesPayments[0]?.method !== 'Gratis') {
+          alert('El monto total pagado debe coincidir con el total del carrito.');
+          setIsProcessing(false);
+          return;
+        }
+
+        // Record each item split by each payment method
+        for (const item of posCart) {
+          const itemTotal = item.product.price * item.quantity;
+          
+          for (let pIdx = 0; pIdx < currentSalesPayments.length; pIdx++) {
+            const payment = currentSalesPayments[pIdx];
+            // Calculate the portion of this item's price covered by this payment
+            // If 'Gratis', amount is always 0
+            const portion = payment.method === 'Gratis' ? 0 : (payment.amount / cartTotal) * itemTotal;
+            
+            // Inventory is deducted only for the FIRST row of this item in this sale
+            const qtyToRecord = pIdx === 0 ? item.quantity : 0;
+            
+            await onAddSale(
+              item.product, 
+              qtyToRecord, 
+              payment.method, 
+              portion, 
+              posCustomerName.trim(), 
+              selectedUsername,
+              posNote
+            );
+          }
+        }
+      }
+
+      setPosCart([]);
+      setPosCustomerName('');
+      setPosNote('');
+      setShowUserSelection(false);
+      setPendingCheckoutMethod(null);
+      setCurrentSalesPayments([]);
+      setSelectedAccountId(null);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Error al procesar la venta. Por favor intenta de nuevo.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleCustomSale = () => {
@@ -899,6 +1006,222 @@ export function SalesPOS({
                       hideCheckout={true}
                     />
                   </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Checkout Modal (User Selection + Multi Payment) */}
+      <AnimatePresence>
+        {showUserSelection && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-parchment flex flex-col md:flex-row"
+            >
+              {/* Payment Info Section */}
+              <div className="flex-1 border-b md:border-b-0 md:border-r border-mist flex flex-col">
+                <div className="p-5 border-b border-mist bg-parchment/10">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="p-2 bg-espresso text-cream rounded-xl">
+                      <CreditCard size={20} />
+                    </div>
+                    <h3 className="font-serif text-xl text-espresso">{isProcessing ? 'Procesando...' : 'Finalizar Venta'}</h3>
+                  </div>
+                  <div className="flex justify-between items-end mt-4">
+                    <div>
+                      <div className="text-[10px] font-bold text-dust uppercase tracking-widest">Total a Pagar</div>
+                      <div className="text-2xl font-bold text-espresso">{formatCurrency(cartTotal)}</div>
+                    </div>
+                    {remainingPaymentBalance > 0 && (
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Pendiente</div>
+                        <div className="text-lg font-bold text-red-500">{formatCurrency(remainingPaymentBalance)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 p-5 overflow-y-auto space-y-4 max-h-[300px] md:max-h-none">
+                  {pendingCheckoutMethod === 'Pendiente' ? (
+                    <div className="space-y-4">
+                      <div className="bg-gold/10 border border-gold/20 p-4 rounded-2xl flex items-center gap-3">
+                        <Clock className="text-espresso shrink-0" size={24} />
+                        <div>
+                          <div className="font-bold text-espresso text-sm">Cuenta Pendiente</div>
+                          <p className="text-[10px] text-espresso/60 leading-tight">Escribe el nombre del cliente en la **Nota** de abajo para abrir una cuenta o selecciona una existente.</p>
+                        </div>
+                      </div>
+
+                      {pendingAccounts.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-[10px] font-bold text-dust uppercase tracking-widest">Cuentas Abiertas</div>
+                          <div className="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-mist/30">
+                            {pendingAccounts.map(acc => (
+                              <button
+                                key={acc.id}
+                                onClick={() => {
+                                  setSelectedAccountId(acc.id);
+                                  // No limpiamos la nota porque puede servir como detalle adicional
+                                }}
+                                className={cn(
+                                  "flex items-center justify-between p-3 rounded-xl border transition-all text-left",
+                                  selectedAccountId === acc.id 
+                                    ? "bg-gold/10 border-gold shadow-sm" 
+                                    : "bg-white border-mist/30 hover:border-gold/50"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-parchment flex items-center justify-center text-espresso">
+                                    <Users size={14} />
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-bold text-espresso truncate max-w-[120px]">{acc.customerName}</div>
+                                    <div className="text-[9px] text-dust font-medium italic">
+                                      Saldo anterior: {formatCurrency(acc.items.reduce((s, i) => s + i.price * i.quantity, 0) - (acc.payments?.reduce((s, p) => s + p.amount, 0) || 0))}
+                                    </div>
+                                  </div>
+                                </div>
+                                {selectedAccountId === acc.id && <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-2">Métodos de Pago</div>
+                      <div className="space-y-2">
+                        {currentSalesPayments.map((p, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-cream/40 p-2 rounded-xl border border-mist/30">
+                            <div className="flex-1">
+                              <div className="text-[10px] font-bold text-dust ml-1 mb-1">{p.method}</div>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-dust">$</span>
+                                <input 
+                                  type="number"
+                                  value={p.amount}
+                                  onChange={(e) => updatePaymentAmount(idx, e.target.value)}
+                                  className="w-full bg-white border border-mist rounded-lg py-1.5 pl-6 pr-3 text-sm font-bold text-espresso outline-none focus:border-gold"
+                                />
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => removePaymentMethod(idx)}
+                              className="p-2 text-red-300 hover:text-red-500 transition-colors mt-4"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {remainingPaymentBalance > 0 && (
+                        <div className="pt-2 border-t border-mist/50">
+                          <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-3">Agregar otro método</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {['Efectivo', 'Tarjeta', 'Transferencia'].map(m => (
+                              <button
+                                key={m}
+                                onClick={() => addPaymentMethod(m)}
+                                className="py-2 px-1 bg-white border border-mist/50 rounded-xl text-[10px] font-bold text-dust hover:border-gold hover:text-espresso transition-all flex flex-col items-center gap-1"
+                              >
+                                {m === 'Efectivo' && <Wallet size={14} />}
+                                {m === 'Tarjeta' && <CreditCard size={14} />}
+                                {m === 'Transferencia' && <Landmark size={14} />}
+                                {m}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-3 pt-4 border-t border-mist/50">
+                    <div className="text-[10px] font-bold text-dust uppercase tracking-widest px-1">
+                      {pendingCheckoutMethod === 'Pendiente' && !selectedAccountId ? 'Nombre del Cliente / Referencia' : 'Nota de Venta (opcional)'}
+                    </div>
+                    <textarea 
+                      value={posNote}
+                      onChange={(e) => {
+                        setPosNote(e.target.value);
+                        if (pendingCheckoutMethod === 'Pendiente' && !selectedAccountId) {
+                          setPosCustomerName(e.target.value);
+                        }
+                      }}
+                      placeholder={pendingCheckoutMethod === 'Pendiente' && !selectedAccountId ? "Escribe el nombre del cliente aquí..." : "Agrega información adicional aquí..."}
+                      className="w-full bg-cream/50 border border-mist/50 rounded-2xl py-3 px-4 text-xs outline-none focus:border-gold focus:ring-2 focus:ring-gold/10 min-h-[80px] resize-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* User Selection Section */}
+              <div className="flex-1 bg-parchment/10 flex flex-col">
+                <div className="p-5 border-b border-mist">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-bark/10 text-bark rounded-xl">
+                      <Users size={20} />
+                    </div>
+                    <h3 className="font-serif text-lg text-espresso">Selecciona Usuario</h3>
+                  </div>
+                  <p className="text-[10px] text-dust mt-1 uppercase tracking-wider">Atendido por:</p>
+                </div>
+
+                <div className="flex-1 p-4 md:p-5 overflow-y-auto max-h-[300px] md:max-h-none space-y-2 scrollbar-thin scrollbar-thumb-parchment">
+                  {users.map((user) => (
+                    <button
+                      key={user.username}
+                      disabled={isProcessing || (pendingCheckoutMethod !== 'Pendiente' && remainingPaymentBalance > 0.01)}
+                      onClick={() => finalizeCheckout(user.username)}
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-2xl border transition-all group shadow-sm hover:shadow-md",
+                        (isProcessing || (remainingPaymentBalance > 0.01 && pendingCheckoutMethod !== 'Pendiente'))
+                          ? "bg-cream/20 border-mist/20 opacity-40 cursor-not-allowed"
+                          : "bg-white border-mist/30 hover:border-gold hover:bg-gold/5"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-bark/10 flex items-center justify-center text-bark group-hover:bg-gold/20 group-hover:text-espresso transition-colors">
+                          {isProcessing ? <RefreshCw size={14} className="animate-spin" /> : <User size={16} />}
+                        </div>
+                        <div className="text-left">
+                          <div className="font-bold text-xs text-espresso">{user.name}</div>
+                          <div className="text-[9px] text-dust uppercase tracking-wider font-medium">{user.role}</div>
+                        </div>
+                      </div>
+                      <Plus size={14} className="text-dust group-hover:text-espresso" />
+                    </button>
+                  ))}
+                  {users.length === 0 && (
+                    <div className="text-center py-10 opacity-50">
+                      <p className="text-[10px] text-dust italic">No hay usuarios registrados</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-5 bg-white border-t border-mist flex flex-col gap-2">
+                  {remainingPaymentBalance > 0.01 && pendingCheckoutMethod !== 'Pendiente' && (
+                    <div className="text-[10px] font-bold text-red-500 text-center uppercase tracking-widest animate-pulse">
+                      Cubre el total para finalizar
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => {
+                      setShowUserSelection(false);
+                      setPendingCheckoutMethod(null);
+                      setCurrentSalesPayments([]);
+                    }}
+                    className="w-full py-2.5 text-[10px] font-bold text-dust hover:text-espresso border border-mist/30 rounded-xl uppercase tracking-widest transition-colors"
+                  >
+                    Regresar al carrito
+                  </button>
                 </div>
               </div>
             </motion.div>

@@ -84,7 +84,7 @@ app.post("/api/sheets/data", async (req, res) => {
 
     const requiredSheets = [
       { title: "Inventario", headers: ["ID", "Nombre", "Categoría", "Precio", "Stock", "Icono"] },
-      { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago", "Usuario"] },
+      { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago", "Usuario", "Nota"] },
       { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas", "Usuario"] },
       { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
       { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
@@ -152,7 +152,8 @@ app.post("/api/sheets/data", async (req, res) => {
       quantity: parseInt(row[4]) || 0,
       amount: parseFloat(row[6]) || 0,
       paymentMethod: row[7] || "Efectivo",
-      username: row[8] || ""
+      username: row[8] || "",
+      note: row[9] || ""
     })).reverse();
 
     const movements = getSheetValues("Movimientos").map(row => ({
@@ -208,7 +209,13 @@ app.post("/api/sheets/data", async (req, res) => {
       };
     });
 
-    res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts });
+    const users = getSheetValues("Usuarios").map(row => ({
+      username: row[0],
+      name: row[2],
+      role: row[3]
+    }));
+
+    res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts, users });
   } catch (error: any) {
     console.error("Error fetching data from sheets:", error);
     res.status(500).json({ error: error.message });
@@ -275,7 +282,7 @@ app.post("/api/sheets/cash-fund", async (req, res) => {
   try {
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-    const now = new Date().toLocaleString('es-MX');
+    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' });
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,
@@ -337,6 +344,7 @@ app.post("/api/sheets/sale", async (req, res) => {
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
+    // 1. Append to Ventas
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: "Ventas!A1",
@@ -348,49 +356,53 @@ app.post("/api/sheets/sale", async (req, res) => {
           sale.productName,
           sale.category,
           sale.quantity,
-          sale.amount / sale.quantity,
+          sale.quantity > 0 ? sale.amount / sale.quantity : 0,
           sale.amount,
           sale.paymentMethod,
-          sale.username || ""
+          sale.username || "",
+          sale.note || ""
         ]]
       }
     });
 
-    const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
-    const inventoryRows = inventoryRes.data.values || [];
-    const rowIndex = inventoryRows.findIndex((row, idx) => {
-      const id = row[0] || `row-${idx + 2}`;
-      return id === productId;
-    });
-
-    if (rowIndex !== -1) {
-      const currentStock = parseInt(inventoryRows[rowIndex][4]) || 0;
-      const newStock = currentStock - sale.quantity;
-      
-      await sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `Inventario!E${rowIndex + 2}`,
-        valueInputOption: "RAW",
-        requestBody: { values: [[newStock]] }
+    // 2. Update Inventory Stock (only if quantity is not 0)
+    if (sale.quantity !== 0) {
+      const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
+      const inventoryRows = inventoryRes.data.values || [];
+      const rowIndex = inventoryRows.findIndex((row, idx) => {
+        const id = row[0] || `row-${idx + 2}`;
+        return id === productId;
       });
 
-      await sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range: "Movimientos!A1",
-        valueInputOption: "USER_ENTERED",
-        requestBody: {
-          values: [[
-            new Date().toLocaleString(),
-            productId,
-            sale.productName,
-            "Salida (Venta)",
-            -sale.quantity,
-            newStock,
-            `Venta ID: ${sale.id}`,
-            sale.username || ""
-          ]]
-        }
-      });
+      if (rowIndex !== -1) {
+        const currentStock = parseInt(inventoryRows[rowIndex][4]) || 0;
+        const newStock = currentStock - sale.quantity;
+        
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `Inventario!E${rowIndex + 2}`,
+          valueInputOption: "RAW",
+          requestBody: { values: [[newStock]] }
+        });
+
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: "Movimientos!A1",
+          valueInputOption: "USER_ENTERED",
+          requestBody: {
+            values: [[
+              new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
+              productId,
+              sale.productName,
+              "Salida (Venta)",
+              -sale.quantity,
+              newStock,
+              `Venta ID: ${sale.id}`,
+              sale.username || ""
+            ]]
+          }
+        });
+      }
     }
 
     res.json({ success: true });
@@ -431,7 +443,7 @@ app.post("/api/sheets/inventory/update", async (req, res) => {
         valueInputOption: "USER_ENTERED",
         requestBody: {
           values: [[
-            new Date().toLocaleString(),
+            new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
             productId,
             inventoryRows[rowIndex][1],
             adjustment > 0 ? "Entrada" : "Ajuste/Salida",
@@ -478,7 +490,7 @@ app.post("/api/sheets/inventory/add", async (req, res) => {
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[
-          new Date().toLocaleString(),
+          new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
           product.id,
           product.name,
           "Alta de Producto",
@@ -509,7 +521,7 @@ app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
 
     await sheets.spreadsheets.values.clear({
       spreadsheetId,
-      range: "Cuentas Pendientes!A2:Z"
+      range: "Cuentas Pendientes!A2:G"
     });
 
     if (accounts.length > 0) {
@@ -526,7 +538,7 @@ app.post("/api/sheets/pending-accounts/sync", async (req, res) => {
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: "Cuentas Pendientes!A2",
-        valueInputOption: "USER_ENTERED",
+        valueInputOption: "RAW",
         requestBody: { values }
       });
     }

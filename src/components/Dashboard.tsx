@@ -1,6 +1,6 @@
 import React from 'react';
-import { Sale, Product, Expense } from '../types';
-import { formatCurrency, cn } from '../lib/utils';
+import { Sale, Product, Expense, CashLog } from '../types';
+import { formatCurrency, cn, parseESDate, isSameDay, getTodayMX } from '../lib/utils';
 import { 
   Library,
   TrendingUp, 
@@ -34,7 +34,8 @@ import {
   PieChart as PieIcon,
   AlertCircle,
   FileText,
-  DollarSign
+  DollarSign,
+  Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -51,6 +52,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { generateDailyReport } from '../lib/pdfGenerator';
 
 const ICON_MAP: Record<string, any> = {
   'library': Library,
@@ -183,20 +185,8 @@ interface DashboardProps {
   sales: Sale[];
   products: Product[];
   expenses: Expense[];
+  cashLogs: CashLog[];
 }
-
-// Helper to parse "DD/MM/YYYY HH:MM:SS" or similar es-MX strings
-const parseESDate = (str: string) => {
-  if (!str) return new Date();
-  const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (match) {
-    const day = parseInt(match[1]);
-    const month = parseInt(match[2]) - 1;
-    const year = parseInt(match[3]);
-    return new Date(year, month, day);
-  }
-  return new Date(str);
-};
 
 const parseAmount = (val: string): number => {
   if (!val) return 0;
@@ -216,14 +206,6 @@ const getTimePart = (str: string) => {
   return str;
 };
 
-const isToday = (dateStr: string) => {
-  const date = parseESDate(dateStr);
-  const today = new Date();
-  return date.getDate() === today.getDate() &&
-         date.getMonth() === today.getMonth() &&
-         date.getFullYear() === today.getFullYear();
-};
-
 const normalizeMethod = (method: string) => {
   const m = method.toLowerCase();
   if (m.includes('efectivo')) return 'Efectivo';
@@ -234,10 +216,13 @@ const normalizeMethod = (method: string) => {
   return method.charAt(0).toUpperCase() + method.slice(1);
 };
 
-export function Dashboard({ sales, products, expenses }: DashboardProps) {
+export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProps) {
   const { todaySales, todayExpenses, totalIncome, totalOutflow, netBalance, lowStockAlerts, paymentMethods, hourlyData, trendData, topProducts, categoryChartData, expenseChartData } = React.useMemo(() => {
-    const ts = sales.filter(s => isToday(s.timestamp));
-    const te = expenses.filter(e => isToday(e.timestamp));
+    const todayMX = getTodayMX();
+    const ts = sales
+      .filter(s => isSameDay(s.timestamp, todayMX))
+      .sort((a, b) => parseESDate(b.timestamp).getTime() - parseESDate(a.timestamp).getTime());
+    const te = expenses.filter(e => isSameDay(e.timestamp, todayMX));
     
     const income = ts.reduce((acc, sale) => acc + sale.amount, 0);
     const outflow = te.reduce((acc, exp) => acc + exp.amount, 0);
@@ -447,7 +432,16 @@ export function Dashboard({ sales, products, expenses }: DashboardProps) {
                 </div>
               </div>
 
-              <div className="flex bg-parchment/50 p-1 rounded-2xl border border-parchment">
+              <div className="flex flex-wrap items-center gap-3">
+                <button 
+                  onClick={() => generateDailyReport(sales, expenses, cashLogs, getTodayMX().toLocaleDateString('es-MX'))}
+                  className="px-4 py-2 bg-espresso text-cream rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-bark transition-all shadow-md shadow-espresso/20"
+                >
+                  <Printer size={14} />
+                  Imprimir Corte de Caja
+                </button>
+
+                <div className="flex bg-parchment/50 p-1 rounded-2xl border border-parchment">
                 <button 
                   onClick={() => setTimeFilter('today')}
                   className={cn(
@@ -468,8 +462,9 @@ export function Dashboard({ sales, products, expenses }: DashboardProps) {
                 </button>
               </div>
             </div>
+          </div>
 
-            <div className="h-[220px] sm:h-[300px] w-full">
+          <div className="h-[220px] sm:h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={timeFilter === 'today' ? hourlyData : trendData}>
                   <defs>

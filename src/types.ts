@@ -18,6 +18,7 @@ export interface Sale {
   quantity: number;
   paymentMethod: string;
   username: string;
+  note?: string;
 }
 
 export interface Event {

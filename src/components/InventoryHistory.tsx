@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { InventoryMovement } from '../types';
 import { History, ArrowUpRight, ArrowDownLeft, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, parseESDate, getTodayMX } from '../lib/utils';
 
 interface InventoryHistoryProps {
   movements: InventoryMovement[];
@@ -9,19 +9,6 @@ interface InventoryHistoryProps {
 
 export function InventoryHistory({ movements }: InventoryHistoryProps) {
   const [selectedDayOffset, setSelectedDayOffset] = useState(0);
-
-  // Helper to parse "DD/MM/YYYY HH:MM:SS" or similar es-MX strings
-  const parseESDate = (str: string) => {
-    if (!str) return new Date();
-    const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (match) {
-      const day = parseInt(match[1]);
-      const month = parseInt(match[2]) - 1;
-      const year = parseInt(match[3]);
-      return new Date(year, month, day);
-    }
-    return new Date(str);
-  };
 
   // Group movements by date
   const groupedMovements = movements.reduce((acc, move) => {
@@ -51,7 +38,7 @@ export function InventoryHistory({ movements }: InventoryHistoryProps) {
             {currentDate && (
               <div className="flex items-center gap-2">
                 <span className="px-4 py-1.5 bg-espresso text-cream rounded-full text-xs font-bold uppercase tracking-widest">
-                  {currentDate === new Date().toLocaleDateString('es-MX') ? 'Hoy' : currentDate}
+                  {currentDate === getTodayMX().toLocaleDateString('es-MX') ? 'Hoy' : currentDate}
                 </span>
                 <span className="text-xs text-dust font-medium italic">
                   {currentMovements.length} movimientos registrados
