@@ -165,7 +165,16 @@ export default function App() {
         }),
       });
       
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response from server:', text);
+        throw new Error('El servidor respondió con un error inesperado. Revisa la configuración de Google Sheets.');
+      }
+
       if (data.success) {
         setCurrentUser(data.user);
         localStorage.setItem('pos_user', JSON.stringify(data.user));
@@ -173,8 +182,9 @@ export default function App() {
       } else {
         setLoginError(data.error || 'Error de autenticación');
       }
-    } catch (error) {
-      setLoginError('Error de red al intentar iniciar sesión.');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setLoginError(error.message || 'Error de red al intentar iniciar sesión.');
     } finally {
       setIsLoading(false);
     }
@@ -192,6 +202,7 @@ export default function App() {
       window.open(url, 'google_auth', 'width=600,height=700');
     } catch (error) {
       console.error('Error getting Google Auth URL:', error);
+      alert('Error al obtener la URL de autenticación de Google.');
     }
   };
 
@@ -208,7 +219,20 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokens, spreadsheetId }),
       });
-      const data = await response.json();
+
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response from server during fetchData:', text);
+        if (!silent) {
+           alert('El servidor respondió con un error inesperado al cargar datos.');
+        }
+        return;
+      }
+
       if (data.error) {
         if (!silent) {
           console.error('Server error fetching data:', data.error);
@@ -841,7 +865,13 @@ export default function App() {
   if (!currentUser) {
     return (
       <>
-        <Login onLogin={handleLogin} isLoading={isLoading} error={loginError} />
+        <Login 
+          onLogin={handleLogin} 
+          onOpenSettings={() => setShowSettings(true)}
+          googleConnected={!!googleTokens}
+          isLoading={isLoading} 
+          error={loginError} 
+        />
         {showSettings && (
           <div className="fixed inset-0 z-50 bg-espresso/40 backdrop-blur-sm flex items-center justify-center p-4">
             <motion.div 

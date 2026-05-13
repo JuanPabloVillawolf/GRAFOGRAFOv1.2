@@ -15,16 +15,22 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Check environment variables
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    console.warn("WARNING: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing. Google Sheets integration will not work.");
+  }
+
   // Google OAuth Setup
+  const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.APP_URL}/auth/callback`
+    `${appUrl}/auth/callback`
   );
 
   // API Routes
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
   // 1. Get Google Auth URL
@@ -240,8 +246,10 @@ async function startServer() {
 
       res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts, users });
     } catch (error: any) {
-      console.error("Error fetching data from sheets:", error);
-      res.status(500).json({ error: error.message });
+      console.error("Error al obtener datos de Google Sheets:", error);
+      res.status(500).json({ 
+        error: `Error de conexión con Google Sheets: ${error.message}. Verifica que el ID de la hoja sea correcto y que hayas otorgado los permisos necesarios.` 
+      });
     }
   });
 
@@ -293,7 +301,8 @@ async function startServer() {
         res.status(401).json({ error: "Usuario o contraseña incorrectos" });
       }
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error("Login endpoint error:", error);
+      res.status(500).json({ error: "Error de conexión con Google Sheets: " + error.message });
     }
   });
 
