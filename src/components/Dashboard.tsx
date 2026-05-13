@@ -167,15 +167,15 @@ const EXPENSE_CATEGORY_STYLES: Record<string, { icon: any, hex: string }> = {
   'Publicidad': { icon: Gift, hex: '#C5A059' }
 };
 
-const getCategoryStyle = (cat: string | undefined) => {
-  const normalized = String(cat || 'Otros').trim().toLowerCase();
+const getCategoryStyle = (cat: string) => {
+  const normalized = cat.trim().toLowerCase();
   const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
   return CATEGORY_STYLES[key || 'Otros'];
 };
 
 const getProductIcon = (iconName: string | undefined, category: string) => {
-  if (iconName && typeof iconName === 'string') {
-    const normalized = String(iconName).trim().toLowerCase();
+  if (iconName) {
+    const normalized = iconName.trim().toLowerCase();
     if (ICON_MAP[normalized]) return ICON_MAP[normalized];
   }
   return getCategoryStyle(category).icon;
@@ -217,7 +217,7 @@ const normalizeMethod = (method: string) => {
 };
 
 export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProps) {
-  const { todaySales, todayExpenses, totalIncome, totalOutflow, netBalance, lowStockAlerts, paymentMethods, hourlyData, trendData, topProducts, categoryChartData, expenseChartData } = React.useMemo(() => {
+  const { todaySales, todayExpenses, totalIncome, totalOutflow, netBalance, lowStockAlerts, totalTransactions, paymentMethods, hourlyData, trendData, topProducts, categoryChartData, expenseChartData } = React.useMemo(() => {
     const todayMX = getTodayMX();
     const ts = sales
       .filter(s => isSameDay(s.timestamp, todayMX))
@@ -229,6 +229,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
     const balance = income - outflow;
     
     const alerts = products.filter(p => p.stock < 5).length;
+    const transCount = ts.length;
 
     // Payment methods breakdown
     const methods = ts.reduce((acc, sale) => {
@@ -292,7 +293,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
     }).filter(h => {
       // Filter out empty hours at start/end of day but keep a decent business range
       const hourNum = parseInt(h.name.split(':')[0]);
-      const hasActivity = h.ventas > 0 || h.gastos > 0;
+      const hasActivity = h.ventas > 0 || h.gastos > 0 || h.transacciones > 0;
       return hasActivity || (hourNum >= 9 && hourNum <= 21);
     });
 
@@ -357,6 +358,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
       totalOutflow: outflow, 
       netBalance: balance, 
       lowStockAlerts: alerts,
+      totalTransactions: transCount,
       paymentMethods: methods,
       hourlyData: hourly,
       trendData: trend,
@@ -368,19 +370,20 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
 
   const [expenseChartType, setExpenseChartType] = React.useState<'bar' | 'pie'>('bar');
   const [timeFilter, setTimeFilter] = React.useState<'today' | 'week'>('today');
-  const [viewMetric, setViewMetric] = React.useState<'amount' | 'frequency'>('amount');
+  const [metricView, setMetricView] = React.useState<'money' | 'volume'>('money');
 
   const metrics = [
     { label: 'Ingresos hoy', value: formatCurrency(totalIncome), detail: 'Ventas brutas', icon: TrendingUp, color: 'text-gold', bg: 'bg-gold/10', bar: 'bg-gold', shadow: 'shadow-gold/10' },
     { label: 'Gastos hoy', value: formatCurrency(totalOutflow), detail: 'Salidas del día', icon: TrendingDown, color: 'text-terra', bg: 'bg-terra/10', bar: 'bg-terra', shadow: 'shadow-terra/10' },
+    { label: 'Transacciones', value: totalTransactions, detail: 'Volumen de ventas', icon: Activity, color: 'text-espresso', bg: 'bg-espresso/10', bar: 'bg-espresso', shadow: 'shadow-espresso/10' },
     { label: 'Balance Neto', value: formatCurrency(netBalance), detail: 'Utilidad neta', icon: Wallet, color: 'text-sage', bg: 'bg-sage/10', bar: 'bg-sage', shadow: 'shadow-sage/10' },
-    { label: 'Alertas Stock', value: lowStockAlerts, detail: 'Productos críticos', icon: AlertTriangle, color: 'text-bark', bg: 'bg-bark/10', bar: 'bg-bark', shadow: 'shadow-bark/10' },
+    { label: 'Alertas Stock', value: lowStockAlerts, detail: 'Críticos (<5)', icon: AlertTriangle, color: 'text-bark', bg: 'bg-bark/10', bar: 'bg-bark', shadow: 'shadow-bark/10' },
   ];
 
   return (
     <div className="space-y-6 pb-14">
       {/* Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
         {metrics.map((metric, i) => (
           <motion.div
             key={metric.label}
@@ -446,22 +449,22 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
 
                 <div className="flex bg-parchment/50 p-1 rounded-2xl border border-parchment">
                   <button 
-                    onClick={() => setViewMetric('amount')}
+                    onClick={() => setMetricView('money')}
                     className={cn(
-                      "px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                      viewMetric === 'amount' ? "bg-gold text-espresso shadow-md" : "text-dust hover:text-espresso"
+                      "px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                      metricView === 'money' ? "bg-white text-espresso shadow-sm" : "text-dust"
                     )}
                   >
                     Monto ($)
                   </button>
                   <button 
-                    onClick={() => setViewMetric('frequency')}
+                    onClick={() => setMetricView('volume')}
                     className={cn(
-                      "px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                      viewMetric === 'frequency' ? "bg-gold text-espresso shadow-md" : "text-dust hover:text-espresso"
+                      "px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                      metricView === 'volume' ? "bg-white text-espresso shadow-sm" : "text-dust"
                     )}
                   >
-                    Frecuencia (#)
+                    Volumen (#)
                   </button>
                 </div>
 
@@ -500,6 +503,10 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                       <stop offset="5%" stopColor="#D27C5A" stopOpacity={0.1}/>
                       <stop offset="95%" stopColor="#D27C5A" stopOpacity={0}/>
                     </linearGradient>
+                    <linearGradient id="colorTrans" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2C1A0E" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#2C1A0E" stopOpacity={0}/>
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1EAD7" />
                   <XAxis 
@@ -513,10 +520,10 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fill: '#A89F91', fontSize: 10, fontWeight: 600 }}
-                    tickFormatter={(val) => viewMetric === 'amount' ? `$${val}` : `${val}`}
+                    tickFormatter={(val) => metricView === 'money' ? `$${val}` : val}
                   />
                   <Tooltip 
-                    cursor={{ stroke: '#C5A059', strokeWidth: 1 }}
+                    cursor={{ stroke: metricView === 'money' ? '#C5A059' : '#2C1A0E', strokeWidth: 1 }}
                     contentStyle={{ 
                       backgroundColor: '#fff', 
                       borderRadius: '20px', 
@@ -525,12 +532,12 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                       fontSize: '11px',
                       padding: '12px 16px'
                     }}
-                    formatter={(val: number) => [
-                      viewMetric === 'amount' ? formatCurrency(val) : `${val} transacciones`,
-                      viewMetric === 'amount' ? 'Monto' : 'Transacciones'
+                    formatter={(val: any, name: any) => [
+                      metricView === 'money' ? formatCurrency(val) : val,
+                      name
                     ]}
                   />
-                  {viewMetric === 'amount' ? (
+                  {metricView === 'money' ? (
                     <>
                       <Area 
                         type="monotone" 
@@ -556,10 +563,10 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                     <Area 
                       type="monotone" 
                       dataKey="transacciones" 
-                      stroke="#8B6F47" 
+                      stroke="#2C1A0E" 
                       strokeWidth={4} 
-                      fillOpacity={0.1} 
-                      fill="#8B6F47"
+                      fillOpacity={1} 
+                      fill="url(#colorTrans)"
                       name="Transacciones"
                     />
                   )}
@@ -568,22 +575,15 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
             </div>
 
             <div className="mt-8 flex flex-wrap gap-8 px-4 py-4 bg-parchment/20 rounded-2xl border border-parchment/40">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-gold shadow-sm shadow-gold/40" />
-                <div>
-                  <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">
-                    {viewMetric === 'amount' ? 'Total Ingresos' : 'Total Transacciones'}
-                  </span>
-                  <span className="text-sm font-bold text-espresso">
-                    {viewMetric === 'amount' 
-                      ? formatCurrency(timeFilter === 'today' ? totalIncome : trendData.reduce((acc, d) => acc + d.ventas, 0))
-                      : (timeFilter === 'today' ? todaySales.length : trendData.reduce((acc, d) => acc + d.transacciones, 0))
-                    }
-                  </span>
-                </div>
-              </div>
-              {viewMetric === 'amount' && (
+              {metricView === 'money' ? (
                 <>
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-gold shadow-sm shadow-gold/40" />
+                    <div>
+                      <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Total Ingresos</span>
+                      <span className="text-sm font-bold text-espresso">{formatCurrency(timeFilter === 'today' ? totalIncome : trendData.reduce((acc, d) => acc + d.ventas, 0))}</span>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 rounded-full bg-terra shadow-sm shadow-terra/40" />
                     <div>
@@ -591,20 +591,38 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                       <span className="text-sm font-bold text-espresso">{formatCurrency(timeFilter === 'today' ? totalOutflow : trendData.reduce((acc, d) => acc + d.gastos, 0))}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-auto">
-                    <div className={cn(
-                      "w-3 h-3 rounded-full shadow-sm",
-                      (timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0)) >= 0 ? "bg-sage bg-gold" : "bg-terra"
-                    )} />
-                    <div>
-                      <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Balance</span>
-                      <span className="text-sm font-bold text-espresso">
-                        {formatCurrency(timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0))}
-                      </span>
-                    </div>
-                  </div>
                 </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-espresso shadow-sm shadow-espresso/40" />
+                  <div>
+                    <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Total Transacciones</span>
+                    <span className="text-sm font-bold text-espresso">
+                      {timeFilter === 'today' ? totalTransactions : trendData.reduce((acc, d) => acc + d.transacciones, 0)} ops.
+                    </span>
+                  </div>
+                </div>
               )}
+              
+              <div className="flex items-center gap-3 ml-auto">
+                <div className={cn(
+                  "w-3 h-3 rounded-full shadow-sm",
+                  metricView === 'money' 
+                    ? (timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0)) >= 0 ? "bg-gold" : "bg-terra"
+                    : "bg-espresso"
+                )} />
+                <div>
+                  <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">
+                    {metricView === 'money' ? 'Balance' : 'Actividad'}
+                  </span>
+                  <span className="text-sm font-bold text-espresso">
+                    {metricView === 'money' 
+                      ? formatCurrency(timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0))
+                      : `${timeFilter === 'today' ? totalTransactions : trendData.reduce((acc, d) => acc + d.transacciones, 0)} totales`
+                    }
+                  </span>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -672,8 +690,8 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299' }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299' }} tickFormatter={(val) => `$${val}`} />
                     <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={28}>
-                      {expenseChartData.map((entry) => (
-                        <Cell key={`bar-${entry.name}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
+                      {expenseChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
                       ))}
                     </Bar>
                     <Tooltip formatter={(val: number) => [`$${val.toFixed(2)}`, 'Gasto']} cursor={{ fill: 'rgba(92, 84, 78, 0.05)' }} />
@@ -681,8 +699,8 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                 ) : (
                   <PieChart>
                     <Pie data={expenseChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="amount">
-                      {expenseChartData.map((entry) => (
-                        <Cell key={`pie-${entry.name}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
+                      {expenseChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(val: number) => [`$${val.toFixed(2)}`, 'Gasto']} />
@@ -829,8 +847,8 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={categoryChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value">
-                    {categoryChartData.map((entry) => (
-                      <Cell key={`cat-cell-${entry.name}`} fill={getCategoryStyle(entry.name).hex} />
+                    {categoryChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getCategoryStyle(entry.name).hex} />
                     ))}
                   </Pie>
                   <Tooltip />

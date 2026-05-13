@@ -52,8 +52,8 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
   const currentTotal = filteredSales.reduce((acc, s) => acc + s.amount, 0);
 
   return (
-    <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4 pb-24 lg:pb-0">
-      <div className="bg-white rounded-2xl border border-parchment shadow-sm">
+    <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4">
+      <div className="bg-white rounded-2xl border border-parchment overflow-hidden flex flex-col min-h-[750px] shadow-sm">
         <div className="px-8 py-5 border-b border-parchment flex flex-col md:flex-row md:items-center justify-between bg-cream/50 gap-4">
           <div className="flex flex-col md:flex-row md:items-center gap-6">
             <h3 className="font-serif text-xl text-espresso flex items-center gap-3">
@@ -93,7 +93,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="text-right flex flex-col mr-4 whitespace-nowrap">
+            <div className="text-right flex flex-col mr-4">
               <span className="text-[10px] font-bold text-dust uppercase tracking-widest">{searchTerm ? 'Total Filtrado' : 'Venta del día'}</span>
               <span className="text-xl font-bold text-espresso">{formatCurrency(currentTotal)}</span>
             </div>
@@ -108,11 +108,11 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
           </div>
         </div>
         
-        <div className="bg-white">
+        <div className="flex-1 overflow-auto bg-white">
           <div className="min-w-full inline-block align-middle">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-separate border-spacing-0">
-                <thead className="bg-parchment/30">
+                <thead className="bg-parchment/30 sticky top-0 z-10 backdrop-blur-md">
                   <tr>
                     <th className="px-6 py-4 font-bold text-espresso/70 uppercase tracking-widest text-[10px] border-b border-parchment/50">Hora</th>
                     <th className="px-6 py-4 font-bold text-espresso/70 uppercase tracking-widest text-[10px] border-b border-parchment/50">Producto</th>
@@ -188,27 +188,27 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
           )}
         </div>
 
-        <div className="px-8 py-4 border-t border-parchment bg-cream/10 flex flex-col items-center gap-4">
+        <div className="px-8 py-6 border-t border-parchment bg-cream/10 flex flex-col items-center gap-6">
           {/* Pagination Controls */}
           {sortedDates.length > 1 && (
             <div className="flex items-center gap-8">
               <button 
                 onClick={() => setSelectedDayOffset(prev => Math.max(prev - 1, 0))}
                 disabled={selectedDayOffset === 0}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-[10px] uppercase tracking-widest border border-parchment shadow-sm bg-white"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-xs uppercase tracking-widest border border-parchment shadow-sm"
               >
-                <ChevronLeft size={14} />
+                <ChevronLeft size={16} />
                 Siguiente
               </button>
               
-              <div className="flex gap-2.5">
-                {sortedDates.map((date) => (
+              <div className="flex gap-3">
+                {sortedDates.map((_, idx) => (
                   <button
-                    key={date}
-                    onClick={() => setSelectedDayOffset(sortedDates.indexOf(date))}
+                    key={idx}
+                    onClick={() => setSelectedDayOffset(idx)}
                     className={cn(
-                      "w-2.5 h-2.5 rounded-full transition-all border border-bark/20",
-                      currentDate === date ? "bg-gold scale-125 border-gold ring-4 ring-gold/10" : "bg-dust/20 hover:bg-dust/40"
+                      "w-3 h-3 rounded-full transition-all border border-bark/20",
+                      selectedDayOffset === idx ? "bg-gold scale-125 border-gold ring-4 ring-gold/10" : "bg-dust/20 hover:bg-dust/40"
                     )}
                   />
                 ))}
@@ -217,10 +217,10 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
               <button 
                 onClick={() => setSelectedDayOffset(prev => Math.min(prev + 1, sortedDates.length - 1))}
                 disabled={selectedDayOffset === sortedDates.length - 1}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-[10px] uppercase tracking-widest border border-parchment shadow-sm bg-white"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-xs uppercase tracking-widest border border-parchment shadow-sm"
               >
                 Anterior
-                <ChevronRight size={14} />
+                <ChevronRight size={16} />
               </button>
             </div>
           )}

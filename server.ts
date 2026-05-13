@@ -156,16 +156,14 @@ async function startServer() {
         return vr?.values || [];
       };
 
-      const inventory = getSheetValues("Inventario")
-        .filter(row => row[1] && row[1].trim() !== "") // Ensure product has a name
-        .map((row, index) => ({
-          id: row[0] || `row-${index + 2}`,
-          name: row[1],
-          category: row[2],
-          price: parseFloat(row[3]) || 0,
-          stock: parseInt(row[4]) || 0,
-          icon: row[5]
-        }));
+      const inventory = getSheetValues("Inventario").map((row, index) => ({
+        id: row[0] || `row-${index + 2}`,
+        name: row[1],
+        category: row[2],
+        price: parseFloat(row[3]) || 0,
+        stock: parseInt(row[4]) || 0,
+        icon: row[5]
+      }));
 
       const sales = getSheetValues("Ventas").map(row => ({
         id: row[0],
@@ -434,6 +432,86 @@ async function startServer() {
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error recording sale:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 7b. Record Batch Sales (Optimized for multiple items/payments)
+  app.post("/api/sheets/sales/batch", async (req, res) => {
+    const { tokens, spreadsheetId, sales, inventoryUpdates } = req.body;
+    if (!tokens || !spreadsheetId || !sales || !Array.isArray(sales)) {
+      return res.status(400).json({ error: "Faltan datos para ventas masivas" });
+    }
+
+    try {
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // 1. Record all sales in one append call
+      const saleValues = sales.map((s: any) => [
+        s.id,
+        s.timestamp,
+        s.productName,
+        s.category,
+        s.quantity,
+        s.quantity > 0 ? s.amount / s.quantity : 0,
+        s.amount,
+        s.paymentMethod,
+        s.username || "",
+        s.note || ""
+      ]);
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Ventas!A1",
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: saleValues }
+      });
+
+      // 2. Batch update inventory movements
+      if (inventoryUpdates && Array.isArray(inventoryUpdates) && inventoryUpdates.length > 0) {
+        const movementValues = inventoryUpdates.map((m: any) => [
+          m.timestamp,
+          m.productId,
+          m.productName,
+          m.type,
+          m.quantity,
+          m.stockResult,
+          m.notes,
+          m.username
+        ]);
+
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: "Movimientos!A1",
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: movementValues }
+        });
+
+        // 3. Update individual stock cells (This is still single-calls unfortunately for Sheets API v4 batch values update, 
+        // but we can group them if needed. For now, since it's inventory, it's safer per-row).
+        // Actually, let's keep it simple but reliable.
+        for (const update of inventoryUpdates) {
+          const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
+          const inventoryRows = inventoryRes.data.values || [];
+          const rowIndex = inventoryRows.findIndex((row, idx) => (row[0] || `row-${idx + 2}`) === update.productId);
+          
+          if (rowIndex !== -1) {
+            const currentStock = parseInt(inventoryRows[rowIndex][4]) || 0;
+            const newStock = currentStock + update.quantity; // adjustment is expected to be negative for sales
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `Inventario!E${rowIndex + 2}`,
+              valueInputOption: "RAW",
+              requestBody: { values: [[newStock]] }
+            });
+          }
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error in batch sales:", error);
       res.status(500).json({ error: error.message });
     }
   });
