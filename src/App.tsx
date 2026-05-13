@@ -51,6 +51,7 @@ export default function App() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   
   const lastSyncedAccountsRef = useRef<string>('');
+  const lastManualSyncTimeRef = useRef<number>(0);
   const isSyncInProgressRef = useRef<boolean>(false);
 
   const syncPendingAccounts = async (accountsToSync?: PendingAccount[]) => {
@@ -61,12 +62,15 @@ export default function App() {
     const accounts = accountsToSync || pendingAccounts;
     const accountsJson = JSON.stringify(accounts);
     
-    // Skip if same as last sync or if a sync is already in progress
-    if (accountsJson === lastSyncedAccountsRef.current || isSyncInProgressRef.current) return;
+    if (accountsJson === lastSyncedAccountsRef.current && !accountsToSync) {
+      if (isSyncInProgressRef.current) return;
+    }
     
     isSyncInProgressRef.current = true;
+    if (accountsToSync) lastManualSyncTimeRef.current = Date.now();
     setIsSyncing(true);
     try {
+      console.log('Sincronizando cuentas pendientes con Google Sheets...', accounts.length);
       const response = await fetch('/api/sheets/pending-accounts/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,14 +82,15 @@ export default function App() {
       });
       
       if (response.ok) {
+        console.log('Sincronización exitosa.');
         setLastSyncTime(new Date());
         lastSyncedAccountsRef.current = accountsJson;
       } else {
         const result = await response.json();
-        console.error('Respuesta de error al sincronizar:', result.error || response.statusText);
+        console.error('Error del servidor al sincronizar:', result.error || response.statusText);
       }
     } catch (error) {
-      console.error('Error de red al sincronizar cuentas pendientes:', error);
+      console.error('Error de red al sincronizar:', error);
     } finally {
       setIsSyncing(false);
       isSyncInProgressRef.current = false;
@@ -217,12 +222,17 @@ export default function App() {
       if (data.expenses) setExpenses(data.expenses);
       if (data.users) setUsers(data.users);
       if (data.pendingAccounts) {
-        // Only update pending accounts if we are not currently editing one
-        // to avoid losing local changes during a poll
-        if (!activePendingAccount) {
+        // Only update if we don't have an active account being edited in POS
+        // AND if we haven't manually synced very recently (to avoid stale server data)
+        const hasNoRecentManualSync = Date.now() - lastManualSyncTimeRef.current > 15000; // Increased to 15s cooldown
+        const currentAccountsJson = JSON.stringify(pendingAccounts);
+        const incomingAccountsJson = JSON.stringify(data.pendingAccounts);
+        
+        const hasNoPendingLocalChanges = currentAccountsJson === lastSyncedAccountsRef.current;
+        
+        if (!activePendingAccount && hasNoRecentManualSync && (hasNoPendingLocalChanges || incomingAccountsJson !== lastSyncedAccountsRef.current)) {
           setPendingAccounts(data.pendingAccounts);
-          // Update ref to avoid immediate re-sync of what we just downloaded
-          lastSyncedAccountsRef.current = JSON.stringify(data.pendingAccounts);
+          lastSyncedAccountsRef.current = incomingAccountsJson;
         }
       }
       if (data.cashLogs) {
@@ -333,7 +343,7 @@ export default function App() {
       }
       
       if (!customerName) return;
-      const finalName = customerName.trim();
+      const finalName = (customerName || '').trim();
       const normalizedFinalName = finalName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
       const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -344,7 +354,7 @@ export default function App() {
         const existingAccount = activePendingAccount 
           ? prev.find(a => a.id === activePendingAccount.id)
           : prev.find(a => {
-              const normalizedAccName = a.customerName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+              const normalizedAccName = (a.customerName || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
               return normalizedAccName === normalizedFinalName;
             });
 
@@ -532,23 +542,40 @@ export default function App() {
 
     try {
       if (isFullyPaid) {
-        // If fully paid, record all items as individual sales split by ALL payments (previous + session)
+        // 1. OPTIMISTIC UPDATE FIRST: Remove from local state immediately
+        // This prevents the background poller from seeing it as "Abierta" and potentially re-adding it
+        // or overwriting other concurrent local changes.
+        let updatedAccounts: PendingAccount[] = [];
+        setPendingAccounts(prev => {
+          updatedAccounts = prev.filter(a => a.id !== account.id);
+          return updatedAccounts;
+        });
+        
+        // Update the sync ref immediately too
+        lastSyncedAccountsRef.current = JSON.stringify(updatedAccounts);
+
+        // 2. Perform sync of the list (one call)
+        await syncPendingAccounts(updatedAccounts);
+
+        if (activePendingAccount?.id === account.id) {
+          setActivePendingAccount(null);
+        }
+
+        // 3. Record all items as sales
         const allPayments = [
           ...(account.payments || []).map(p => ({ method: p.method, amount: p.amount })),
           ...sessionPayments
         ];
         
-        // We calculate total actually paid to handle cases with tips or partial overpayment if any
         const actualTotalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
+        const salePromises = [];
 
         for (const item of account.items) {
           const itemTotal = item.price * item.quantity;
           
           for (let pIdx = 0; pIdx < allPayments.length; pIdx++) {
             const p = allPayments[pIdx];
-            // Distribute item price based on payment weights
             const portion = (p.amount / actualTotalPaid) * itemTotal;
-            // Record inventory reduction only in the first payment row of this item
             const qtyToRecord = pIdx === 0 ? item.quantity : 0;
 
             const newSale: Sale = {
@@ -563,31 +590,26 @@ export default function App() {
               note: `Liquidación cuenta: ${account.customerName}`
             };
 
+            // Update local sales list for immediate UI feedback
             setSales(prev => [newSale, ...prev]);
             
-            await fetch('/api/sheets/sale', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                tokens: googleTokens, 
-                spreadsheetId: templateId, 
-                sale: { ...newSale, username: transactionUsername },
-                productId: item.productId
-              }),
-            });
+            // Collect promises for final waiting
+            salePromises.push(
+              fetch('/api/sheets/sale', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  tokens: googleTokens, 
+                  spreadsheetId: templateId, 
+                  sale: { ...newSale, username: transactionUsername },
+                  productId: item.productId
+                }),
+              }).catch(err => console.error("Error al registrar venta de liquidación:", err))
+            );
           }
         }
-
-        let updatedAccounts: PendingAccount[] = [];
-        setPendingAccounts(prev => {
-          updatedAccounts = prev.filter(a => a.id !== account.id);
-          return updatedAccounts;
-        });
-        
-        syncPendingAccounts(updatedAccounts);
-        if (activePendingAccount?.id === account.id) {
-          setActivePendingAccount(null);
-        }
+        await Promise.all(salePromises);
+        console.log("Todas las ventas de la liquidación han sido registradas.");
       } else {
         // Partial session payment: We ONLY update the pending account tracking.
         // We don't record individual sales yet to avoid double counting items later.

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Sale, Expense, CashLog } from '../types';
 import { formatCurrency, cn, parseESDate, getTodayMX } from '../lib/utils';
-import { Receipt, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Receipt, FileText, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { generateDailyReport } from '../lib/pdfGenerator';
 
 interface SalesHistoryProps {
@@ -12,32 +12,53 @@ interface SalesHistoryProps {
 
 export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
   const [selectedDayOffset, setSelectedDayOffset] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Group sales by date
-  const groupedSales = sales.reduce((acc, sale) => {
+  const groupedSales = useMemo(() => sales.reduce((acc, sale) => {
     const date = parseESDate(sale.timestamp).toLocaleDateString('es-MX');
     if (!acc[date]) acc[date] = [];
     acc[date].push(sale);
     return acc;
-  }, {} as Record<string, Sale[]>);
+  }, {} as Record<string, Sale[]>), [sales]);
 
   // Get unique dates sorted descending
-  const sortedDates = Object.keys(groupedSales).sort((a, b) => {
+  const sortedDates = useMemo(() => Object.keys(groupedSales).sort((a, b) => {
     return parseESDate(b).getTime() - parseESDate(a).getTime();
-  }).slice(0, 5); // Max 5 days
+  }).slice(0, 5), [groupedSales]); // Max 5 days
 
   const currentDate = sortedDates[selectedDayOffset];
-  const currentSales = currentDate ? [...groupedSales[currentDate]].sort((a, b) => parseESDate(b.timestamp).getTime() - parseESDate(a.timestamp).getTime()) : [];
-  const currentTotal = currentSales.reduce((acc, s) => acc + s.amount, 0);
+  
+  const filteredSales = useMemo(() => {
+    if (!currentDate) return [];
+    
+    let current = [...groupedSales[currentDate]].sort((a, b) => 
+      parseESDate(b.timestamp).getTime() - parseESDate(a.timestamp).getTime()
+    );
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      current = current.filter(sale => 
+        sale.productName.toLowerCase().includes(term) ||
+        sale.category.toLowerCase().includes(term) ||
+        (sale.note && sale.note.toLowerCase().includes(term)) ||
+        (sale.username && sale.username.toLowerCase().includes(term))
+      );
+    }
+    
+    return current;
+  }, [currentDate, groupedSales, searchTerm]);
+
+  const currentTotal = filteredSales.reduce((acc, s) => acc + s.amount, 0);
 
   return (
-    <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4">
-      <div className="bg-white rounded-2xl border border-parchment overflow-hidden flex flex-col min-h-[750px] shadow-sm">
-        <div className="px-8 py-5 border-b border-parchment flex items-center justify-between bg-cream/50">
-          <div className="flex items-center gap-6">
+    <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4 pb-24 lg:pb-0">
+      <div className="bg-white rounded-2xl border border-parchment shadow-sm">
+        <div className="px-8 py-5 border-b border-parchment flex flex-col md:flex-row md:items-center justify-between bg-cream/50 gap-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
             <h3 className="font-serif text-xl text-espresso flex items-center gap-3">
               <Receipt size={24} className="text-bark" />
-              Registro Detallado de Ventas
+              Registro Detallado
             </h3>
             {currentDate && (
               <div className="flex items-center gap-2">
@@ -45,19 +66,40 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
                   {currentDate === getTodayMX().toLocaleDateString('es-MX') ? 'Hoy' : currentDate}
                 </span>
                 <span className="text-xs text-dust font-medium italic">
-                  {currentSales.length} transacciones registradas
+                  {filteredSales.length} {searchTerm ? 'coincidencias' : 'transacciones'}
                 </span>
               </div>
             )}
           </div>
+
+          {/* Search Bar */}
+          <div className="flex-1 max-w-md relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-dust" size={18} />
+            <input 
+              type="text"
+              placeholder="Buscar por producto, categoría..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-cream border border-mist rounded-xl py-2.5 pl-12 pr-10 text-sm outline-none focus:border-bark transition-all"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-dust hover:text-espresso"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center gap-4">
-            <div className="text-right flex flex-col mr-4">
-              <span className="text-[10px] font-bold text-dust uppercase tracking-widest">Venta del día</span>
+            <div className="text-right flex flex-col mr-4 whitespace-nowrap">
+              <span className="text-[10px] font-bold text-dust uppercase tracking-widest">{searchTerm ? 'Total Filtrado' : 'Venta del día'}</span>
               <span className="text-xl font-bold text-espresso">{formatCurrency(currentTotal)}</span>
             </div>
             <button 
               onClick={() => generateDailyReport(sales, expenses, cashLogs, currentDate || getTodayMX().toLocaleDateString('es-MX'))}
-              disabled={currentSales.length === 0}
+              disabled={filteredSales.length === 0}
               className="px-6 py-2.5 bg-bark text-white rounded-xl font-bold text-xs hover:bg-espresso transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
             >
               <FileText size={16} />
@@ -66,11 +108,11 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
           </div>
         </div>
         
-        <div className="flex-1 overflow-auto bg-white">
+        <div className="bg-white">
           <div className="min-w-full inline-block align-middle">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-separate border-spacing-0">
-                <thead className="bg-parchment/30 sticky top-0 z-10 backdrop-blur-md">
+                <thead className="bg-parchment/30">
                   <tr>
                     <th className="px-6 py-4 font-bold text-espresso/70 uppercase tracking-widest text-[10px] border-b border-parchment/50">Hora</th>
                     <th className="px-6 py-4 font-bold text-espresso/70 uppercase tracking-widest text-[10px] border-b border-parchment/50">Producto</th>
@@ -81,7 +123,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-parchment/50">
-                  {currentSales.map((sale, index) => (
+                  {filteredSales.map((sale, index) => (
                     <tr key={`${sale.id}-${index}`} className="hover:bg-cream/30 transition-colors group">
                       <td className="px-6 py-4 text-dust font-mono text-xs whitespace-nowrap">
                         {sale.timestamp.includes(',') ? sale.timestamp.split(',')[1].trim() : sale.timestamp}
@@ -126,37 +168,47 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
               </table>
             </div>
           </div>
-          {currentSales.length === 0 && (
+          {filteredSales.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-dust text-sm italic opacity-50 space-y-4 py-32">
               <div className="w-20 h-20 bg-parchment/20 rounded-full flex items-center justify-center">
                 <Receipt size={48} strokeWidth={1} />
               </div>
-              <p className="text-base">No se encontraron registros para este periodo</p>
+              <p className="text-base">
+                {searchTerm ? 'No se encontraron coincidencias para tu búsqueda' : 'No se encontraron registros para este periodo'}
+              </p>
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')}
+                  className="text-bark font-bold underline"
+                >
+                  Ver todos los registros
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        <div className="px-8 py-6 border-t border-parchment bg-cream/10 flex flex-col items-center gap-6">
+        <div className="px-8 py-4 border-t border-parchment bg-cream/10 flex flex-col items-center gap-4">
           {/* Pagination Controls */}
           {sortedDates.length > 1 && (
             <div className="flex items-center gap-8">
               <button 
                 onClick={() => setSelectedDayOffset(prev => Math.max(prev - 1, 0))}
                 disabled={selectedDayOffset === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-xs uppercase tracking-widest border border-parchment shadow-sm"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-[10px] uppercase tracking-widest border border-parchment shadow-sm bg-white"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={14} />
                 Siguiente
               </button>
               
-              <div className="flex gap-3">
-                {sortedDates.map((_, idx) => (
+              <div className="flex gap-2.5">
+                {sortedDates.map((date) => (
                   <button
-                    key={idx}
-                    onClick={() => setSelectedDayOffset(idx)}
+                    key={date}
+                    onClick={() => setSelectedDayOffset(sortedDates.indexOf(date))}
                     className={cn(
-                      "w-3 h-3 rounded-full transition-all border border-bark/20",
-                      selectedDayOffset === idx ? "bg-gold scale-125 border-gold ring-4 ring-gold/10" : "bg-dust/20 hover:bg-dust/40"
+                      "w-2.5 h-2.5 rounded-full transition-all border border-bark/20",
+                      currentDate === date ? "bg-gold scale-125 border-gold ring-4 ring-gold/10" : "bg-dust/20 hover:bg-dust/40"
                     )}
                   />
                 ))}
@@ -165,10 +217,10 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
               <button 
                 onClick={() => setSelectedDayOffset(prev => Math.min(prev + 1, sortedDates.length - 1))}
                 disabled={selectedDayOffset === sortedDates.length - 1}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-xs uppercase tracking-widest border border-parchment shadow-sm"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-xl hover:bg-espresso hover:text-cream text-espresso disabled:opacity-30 transition-all font-bold text-[10px] uppercase tracking-widest border border-parchment shadow-sm bg-white"
               >
                 Anterior
-                <ChevronRight size={16} />
+                <ChevronRight size={14} />
               </button>
             </div>
           )}
