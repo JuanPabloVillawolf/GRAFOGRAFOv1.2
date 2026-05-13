@@ -7,9 +7,6 @@ import serverless from "serverless-http";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
 const PORT = 3000;
 
@@ -800,20 +797,28 @@ const oauth2Client = new google.auth.OAuth2(
   });
 
 // Production/Development middleware
-if (process.env.NODE_ENV === "production" || process.env.NETLIFY) {
-  const distPath = path.join(process.cwd(), "dist");
-  app.use(express.static(distPath));
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-} else {
-  const { createServer } = await import("vite");
-  const vite = await createServer({
-    server: { middlewareMode: true },
-    appType: "spa",
-  });
-  app.use(vite.middlewares);
+async function setupMiddleware() {
+  if (process.env.NODE_ENV === "production" || process.env.NETLIFY) {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  } else {
+    try {
+      const { createServer } = await import("vite");
+      const vite = await createServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.warn("Vite not found or could not be loaded dynamically");
+    }
+  }
 }
+
+setupMiddleware();
 
 // Local server start
 if (!process.env.NETLIFY && process.env.NODE_ENV !== "test") {

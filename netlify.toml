@@ -2,6 +2,9 @@
   publish = "dist"
   command = "npm run build"
 
+[functions]
+  external_node_modules = ["vite"]
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api"
