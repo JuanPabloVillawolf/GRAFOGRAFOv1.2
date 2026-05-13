@@ -156,14 +156,16 @@ async function startServer() {
         return vr?.values || [];
       };
 
-      const inventory = getSheetValues("Inventario").map((row, index) => ({
-        id: row[0] || `row-${index + 2}`,
-        name: row[1],
-        category: row[2],
-        price: parseFloat(row[3]) || 0,
-        stock: parseInt(row[4]) || 0,
-        icon: row[5]
-      }));
+      const inventory = getSheetValues("Inventario")
+        .filter(row => row[1] && row[1].trim() !== "") // Ensure product has a name
+        .map((row, index) => ({
+          id: row[0] || `row-${index + 2}`,
+          name: row[1],
+          category: row[2],
+          price: parseFloat(row[3]) || 0,
+          stock: parseInt(row[4]) || 0,
+          icon: row[5]
+        }));
 
       const sales = getSheetValues("Ventas").map(row => ({
         id: row[0],

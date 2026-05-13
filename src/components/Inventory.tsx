@@ -128,15 +128,15 @@ const ICON_MAP: Record<string, any> = {
 };
 
 const getProductIcon = (iconName: string | undefined, category: string) => {
-  if (iconName) {
-    const normalized = iconName.trim().toLowerCase();
+  if (iconName && typeof iconName === 'string') {
+    const normalized = String(iconName).trim().toLowerCase();
     if (ICON_MAP[normalized]) return ICON_MAP[normalized];
   }
   return getCategoryStyle(category).icon;
 };
 
-const getCategoryStyle = (cat: string) => {
-  const normalized = cat.trim().toLowerCase();
+const getCategoryStyle = (cat: string | undefined) => {
+  const normalized = String(cat || 'Otros').trim().toLowerCase();
   const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
   return CATEGORY_STYLES[key || 'Otros'];
 };
