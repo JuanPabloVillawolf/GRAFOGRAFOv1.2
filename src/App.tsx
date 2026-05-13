@@ -178,13 +178,13 @@ export default function App() {
       if (data.success) {
         setCurrentUser(data.user);
         localStorage.setItem('pos_user', JSON.stringify(data.user));
-        fetchData(googleTokens, templateId); // Fetch data immediately to check for cash fund
+        fetchData(googleTokens, templateId, true); // Silent fetch
       } else {
-        setLoginError(data.error || 'Error de autenticación');
+        setLoginError(data.error || 'Usuario o contraseña incorrectos');
       }
     } catch (error: any) {
-      console.error('Login error:', error);
-      setLoginError(error.message || 'Error de red al intentar iniciar sesión.');
+      console.error('Detailed login error:', error);
+      setLoginError(error.message || 'Error de red al intentar conectar con el servidor.');
     } finally {
       setIsLoading(false);
     }
@@ -921,6 +921,29 @@ export default function App() {
                     placeholder="Pega el ID o URL de tu Google Sheet"
                   />
                 </div>
+
+                <div className="pt-4 border-t border-parchment">
+                  <h4 className="text-[10px] font-bold text-dust uppercase tracking-wider mb-2 ml-1">Estado de Conexión</h4>
+                  <div className="bg-cream rounded-lg p-3 border border-parchment text-[10px] space-y-1.5">
+                     <div className="flex justify-between items-center">
+                       <span className="text-dust">Servidor API:</span>
+                       <span className="text-green-600 font-bold">ACTIVO</span>
+                     </div>
+                     <div className="flex justify-between items-center">
+                       <span className="text-dust">Cuenta Google:</span>
+                       <span className={googleTokens ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>
+                         {googleTokens ? "CONECTADA" : "PENDIENTE"}
+                       </span>
+                     </div>
+                     <div className="flex justify-between items-center">
+                       <span className="text-dust">Hoja de Cálculo:</span>
+                       <span className={templateId ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>
+                         {templateId ? "CONFIGURADA" : "VACÍO"}
+                       </span>
+                     </div>
+                  </div>
+                </div>
+
                 <button 
                   onClick={() => setShowSettings(false)}
                   className="w-full py-3 bg-espresso text-cream rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-bark transition-colors"

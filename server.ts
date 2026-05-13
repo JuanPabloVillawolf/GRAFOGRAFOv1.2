@@ -56,6 +56,12 @@ async function startServer() {
         "https://www.googleapis.com/auth/drive.file",
       ];
 
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        return res.status(500).json({ 
+          error: "Configuración incompleta: GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET faltan en el servidor." 
+        });
+      }
+
       const url = oauth2Client.generateAuthUrl({
         access_type: "offline",
         scope: scopes,
@@ -281,8 +287,43 @@ async function startServer() {
     }
 
     try {
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        return res.status(500).json({ error: "Configuración de Google OAuth incompleta en el servidor. (GOOGLE_CLIENT_ID missing)" });
+      }
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // First check if Usuarios sheet exists and headers are correct
+      try {
+        await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "Usuarios!A2:D",
+        });
+      } catch (err: any) {
+        if (err.message?.includes("range") || err.message?.includes("not found")) {
+          // Initialize Usuarios sheet if missing
+          const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+          const sheetTitles = spreadsheet.data.sheets?.map(s => s.properties?.title || "") || [];
+          if (!sheetTitles.some(t => t.toLowerCase() === "usuarios")) {
+             await sheets.spreadsheets.batchUpdate({
+               spreadsheetId,
+               requestBody: {
+                 requests: [{
+                   addSheet: { properties: { title: "Usuarios", gridProperties: { frozenRowCount: 1 } } }
+                 }]
+               }
+             });
+             await sheets.spreadsheets.values.update({
+               spreadsheetId,
+               range: "Usuarios!A1",
+               valueInputOption: "RAW",
+               requestBody: { values: [["Usuario", "Contraseña", "Nombre", "Rol"]] }
+             });
+          }
+        } else {
+          throw err;
+        }
+      }
 
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
