@@ -148,7 +148,7 @@ export function PendingAccounts({ accounts, users, onDeleteAccount, onPayAccount
                         </div>
                         <div className="space-y-2 pr-2">
                           {account.items.map((item, idx) => (
-                            <div key={`${item.productId}-${idx}`} className="flex justify-between items-center text-[11px] text-ink py-2 border-b border-parchment/30 last:border-0 gap-2">
+                            <div key={idx} className="flex justify-between items-center text-[11px] text-ink py-2 border-b border-parchment/30 last:border-0 gap-2">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <span className="font-medium truncate">{item.productName}</span>
                               </div>
@@ -168,7 +168,7 @@ export function PendingAccounts({ accounts, users, onDeleteAccount, onPayAccount
                           <div className="text-[10px] font-bold text-dust uppercase tracking-wider">Historial de Pagos</div>
                           <div className="space-y-1.5">
                             {account.payments.map((p, idx) => (
-                              <div key={`${p.method}-${idx}`} className="flex justify-between items-center bg-cream/50 px-3 py-2 rounded-lg text-xs">
+                              <div key={idx} className="flex justify-between items-center bg-cream/50 px-3 py-2 rounded-lg text-xs">
                                 <div className="flex flex-col">
                                   <span className="font-medium text-espresso">{p.method}</span>
                                   <span className="text-[9px] text-dust italic">{p.timestamp}</span>
@@ -273,7 +273,7 @@ export function PendingAccounts({ accounts, users, onDeleteAccount, onPayAccount
                     <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-2">Pagos de esta sesión</div>
                     <div className="space-y-2">
                       {currentPayments.map((p, idx) => (
-                        <div key={`${p.method}-${idx}`} className="flex items-center gap-2 bg-cream/40 p-2 rounded-xl border border-mist/30">
+                        <div key={idx} className="flex items-center gap-2 bg-cream/40 p-2 rounded-xl border border-mist/30">
                           <div className="flex-1">
                             <div className="text-[10px] font-bold text-dust ml-1 mb-1">{p.method}</div>
                             <div className="relative">

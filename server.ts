@@ -15,64 +15,32 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Request logging middleware
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-  });
-
-  // Check environment variables
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    console.warn("WARNING: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing. Google Sheets integration will not work.");
-  }
-
   // Google OAuth Setup
-  const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    `${appUrl}/auth/callback`
+    `${process.env.APP_URL}/auth/callback`
   );
 
   // API Routes
   app.get("/api/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      env: {
-        hasClientId: !!process.env.GOOGLE_CLIENT_ID,
-        hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-        appUrl: process.env.APP_URL || 'not-set',
-        nodeEnv: process.env.NODE_ENV || 'development'
-      }
-    });
+    res.json({ status: "ok" });
   });
 
   // 1. Get Google Auth URL
   app.get("/api/auth/google/url", (req, res) => {
-    try {
-      const scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.file",
-      ];
+    const scopes = [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file",
+    ];
 
-      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-        return res.status(500).json({ 
-          error: "Configuración incompleta: GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET faltan en el servidor." 
-        });
-      }
+    const url = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      scope: scopes,
+      prompt: "consent",
+    });
 
-      const url = oauth2Client.generateAuthUrl({
-        access_type: "offline",
-        scope: scopes,
-        prompt: "consent",
-      });
-
-      res.json({ url });
-    } catch (error: any) {
-      console.error("Auth URL error:", error);
-      res.status(500).json({ error: "Error al generar la URL de autenticación: " + error.message });
-    }
+    res.json({ url });
   });
 
   // 2. OAuth Callback
@@ -188,16 +156,14 @@ async function startServer() {
         return vr?.values || [];
       };
 
-      const inventory = getSheetValues("Inventario")
-        .filter(row => row[1] && row[1].trim() !== "") // Ensure product has a name
-        .map((row, index) => ({
-          id: row[0] || `row-${index + 2}`,
-          name: row[1],
-          category: row[2],
-          price: parseFloat(row[3]) || 0,
-          stock: parseInt(row[4]) || 0,
-          icon: row[5]
-        }));
+      const inventory = getSheetValues("Inventario").map((row, index) => ({
+        id: row[0] || `row-${index + 2}`,
+        name: row[1],
+        category: row[2],
+        price: parseFloat(row[3]) || 0,
+        stock: parseInt(row[4]) || 0,
+        icon: row[5]
+      }));
 
       const sales = getSheetValues("Ventas").map(row => ({
         id: row[0],
@@ -272,10 +238,8 @@ async function startServer() {
 
       res.json({ inventory, sales, movements, expenses, cashLogs, pendingAccounts, users });
     } catch (error: any) {
-      console.error("Error al obtener datos de Google Sheets:", error);
-      res.status(500).json({ 
-        error: `Error de conexión con Google Sheets: ${error.message}. Verifica que el ID de la hoja sea correcto y que las pestañas (Inventario, Ventas, etc.) existan.` 
-      });
+      console.error("Error fetching data from sheets:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -287,43 +251,8 @@ async function startServer() {
     }
 
     try {
-      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-        return res.status(500).json({ error: "Configuración de Google OAuth incompleta en el servidor. (GOOGLE_CLIENT_ID missing)" });
-      }
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
-
-      // First check if Usuarios sheet exists and headers are correct
-      try {
-        await sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Usuarios!A2:D",
-        });
-      } catch (err: any) {
-        if (err.message?.includes("range") || err.message?.includes("not found")) {
-          // Initialize Usuarios sheet if missing
-          const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
-          const sheetTitles = spreadsheet.data.sheets?.map(s => s.properties?.title || "") || [];
-          if (!sheetTitles.some(t => t.toLowerCase() === "usuarios")) {
-             await sheets.spreadsheets.batchUpdate({
-               spreadsheetId,
-               requestBody: {
-                 requests: [{
-                   addSheet: { properties: { title: "Usuarios", gridProperties: { frozenRowCount: 1 } } }
-                 }]
-               }
-             });
-             await sheets.spreadsheets.values.update({
-               spreadsheetId,
-               range: "Usuarios!A1",
-               valueInputOption: "RAW",
-               requestBody: { values: [["Usuario", "Contraseña", "Nombre", "Rol"]] }
-             });
-          }
-        } else {
-          throw err;
-        }
-      }
 
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -362,8 +291,7 @@ async function startServer() {
         res.status(401).json({ error: "Usuario o contraseña incorrectos" });
       }
     } catch (error: any) {
-      console.error("Login endpoint error:", error);
-      res.status(500).json({ error: "Error de conexión con Google Sheets: " + error.message });
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -791,22 +719,6 @@ async function startServer() {
     }
   });
 
-  // Global error handler to ensure JSON responses
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error("Global error handler:", err);
-    if (!res.headersSent) {
-      res.status(500).json({
-        error: "Error interno del servidor",
-        message: err.message
-      });
-    }
-  });
-
-  // 404 handler for API routes
-  app.use("/api/*", (req, res) => {
-    res.status(404).json({ error: "API endpoint no encontrado", path: req.originalUrl });
-  });
-
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const { createServer } = await import("vite");
@@ -828,6 +740,4 @@ async function startServer() {
   });
 }
 
-startServer().catch(err => {
-  console.error("FATAL: Error al iniciar el servidor:", err);
-});
+startServer();

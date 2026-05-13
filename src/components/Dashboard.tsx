@@ -167,15 +167,15 @@ const EXPENSE_CATEGORY_STYLES: Record<string, { icon: any, hex: string }> = {
   'Publicidad': { icon: Gift, hex: '#C5A059' }
 };
 
-const getCategoryStyle = (cat: string | undefined) => {
-  const normalized = String(cat || 'Otros').trim().toLowerCase();
+const getCategoryStyle = (cat: string) => {
+  const normalized = cat.trim().toLowerCase();
   const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
   return CATEGORY_STYLES[key || 'Otros'];
 };
 
 const getProductIcon = (iconName: string | undefined, category: string) => {
-  if (iconName && typeof iconName === 'string') {
-    const normalized = String(iconName).trim().toLowerCase();
+  if (iconName) {
+    const normalized = iconName.trim().toLowerCase();
     if (ICON_MAP[normalized]) return ICON_MAP[normalized];
   }
   return getCategoryStyle(category).icon;
@@ -287,7 +287,6 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
         name: hour,
         ventas: hourSales.reduce((acc, s) => acc + s.amount, 0),
         gastos: hourExpenses.reduce((acc, e) => acc + e.amount, 0),
-        transacciones: hourSales.length,
       };
     }).filter(h => {
       // Filter out empty hours at start/end of day but keep a decent business range
@@ -320,7 +319,6 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
         name: ds,
         ventas: dayS.reduce((acc, s) => acc + s.amount, 0),
         gastos: dayE.reduce((acc, e) => acc + e.amount, 0),
-        transacciones: dayS.length,
       };
     });
 
@@ -368,7 +366,6 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
 
   const [expenseChartType, setExpenseChartType] = React.useState<'bar' | 'pie'>('bar');
   const [timeFilter, setTimeFilter] = React.useState<'today' | 'week'>('today');
-  const [viewMetric, setViewMetric] = React.useState<'amount' | 'frequency'>('amount');
 
   const metrics = [
     { label: 'Ingresos hoy', value: formatCurrency(totalIncome), detail: 'Ventas brutas', icon: TrendingUp, color: 'text-gold', bg: 'bg-gold/10', bar: 'bg-gold', shadow: 'shadow-gold/10' },
@@ -445,27 +442,6 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                 </button>
 
                 <div className="flex bg-parchment/50 p-1 rounded-2xl border border-parchment">
-                  <button 
-                    onClick={() => setViewMetric('amount')}
-                    className={cn(
-                      "px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                      viewMetric === 'amount' ? "bg-gold text-espresso shadow-md" : "text-dust hover:text-espresso"
-                    )}
-                  >
-                    Monto ($)
-                  </button>
-                  <button 
-                    onClick={() => setViewMetric('frequency')}
-                    className={cn(
-                      "px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300",
-                      viewMetric === 'frequency' ? "bg-gold text-espresso shadow-md" : "text-dust hover:text-espresso"
-                    )}
-                  >
-                    Frecuencia (#)
-                  </button>
-                </div>
-
-                <div className="flex bg-parchment/50 p-1 rounded-2xl border border-parchment">
                 <button 
                   onClick={() => setTimeFilter('today')}
                   className={cn(
@@ -513,7 +489,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fill: '#A89F91', fontSize: 10, fontWeight: 600 }}
-                    tickFormatter={(val) => viewMetric === 'amount' ? `$${val}` : `${val}`}
+                    tickFormatter={(val) => `$${val}`}
                   />
                   <Tooltip 
                     cursor={{ stroke: '#C5A059', strokeWidth: 1 }}
@@ -525,44 +501,26 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                       fontSize: '11px',
                       padding: '12px 16px'
                     }}
-                    formatter={(val: number) => [
-                      viewMetric === 'amount' ? formatCurrency(val) : `${val} transacciones`,
-                      viewMetric === 'amount' ? 'Monto' : 'Transacciones'
-                    ]}
                   />
-                  {viewMetric === 'amount' ? (
-                    <>
-                      <Area 
-                        type="monotone" 
-                        dataKey="ventas" 
-                        stroke="#C5A059" 
-                        strokeWidth={4} 
-                        fillOpacity={1} 
-                        fill="url(#colorIncome)"
-                        name="Ingresos"
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="gastos" 
-                        stroke="#D27C5A" 
-                        strokeWidth={2} 
-                        strokeDasharray="4 4" 
-                        fillOpacity={1} 
-                        fill="url(#colorExpense)"
-                        name="Egresos"
-                      />
-                    </>
-                  ) : (
-                    <Area 
-                      type="monotone" 
-                      dataKey="transacciones" 
-                      stroke="#8B6F47" 
-                      strokeWidth={4} 
-                      fillOpacity={0.1} 
-                      fill="#8B6F47"
-                      name="Transacciones"
-                    />
-                  )}
+                  <Area 
+                    type="monotone" 
+                    dataKey="ventas" 
+                    stroke="#C5A059" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#colorIncome)"
+                    name="Ingresos"
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="gastos" 
+                    stroke="#D27C5A" 
+                    strokeWidth={2} 
+                    strokeDasharray="4 4" 
+                    fillOpacity={1} 
+                    fill="url(#colorExpense)"
+                    name="Egresos"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -571,40 +529,29 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-gold shadow-sm shadow-gold/40" />
                 <div>
-                  <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">
-                    {viewMetric === 'amount' ? 'Total Ingresos' : 'Total Transacciones'}
-                  </span>
+                  <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Total Ingresos</span>
+                  <span className="text-sm font-bold text-espresso">{formatCurrency(timeFilter === 'today' ? totalIncome : trendData.reduce((acc, d) => acc + d.ventas, 0))}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-terra shadow-sm shadow-terra/40" />
+                <div>
+                  <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Total Egresos</span>
+                  <span className="text-sm font-bold text-espresso">{formatCurrency(timeFilter === 'today' ? totalOutflow : trendData.reduce((acc, d) => acc + d.gastos, 0))}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 ml-auto">
+                <div className={cn(
+                  "w-3 h-3 rounded-full shadow-sm",
+                  (timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0)) >= 0 ? "bg-sage bg-gold" : "bg-terra"
+                )} />
+                <div>
+                  <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Balance</span>
                   <span className="text-sm font-bold text-espresso">
-                    {viewMetric === 'amount' 
-                      ? formatCurrency(timeFilter === 'today' ? totalIncome : trendData.reduce((acc, d) => acc + d.ventas, 0))
-                      : (timeFilter === 'today' ? todaySales.length : trendData.reduce((acc, d) => acc + d.transacciones, 0))
-                    }
+                    {formatCurrency(timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0))}
                   </span>
                 </div>
               </div>
-              {viewMetric === 'amount' && (
-                <>
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-terra shadow-sm shadow-terra/40" />
-                    <div>
-                      <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Total Egresos</span>
-                      <span className="text-sm font-bold text-espresso">{formatCurrency(timeFilter === 'today' ? totalOutflow : trendData.reduce((acc, d) => acc + d.gastos, 0))}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 ml-auto">
-                    <div className={cn(
-                      "w-3 h-3 rounded-full shadow-sm",
-                      (timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0)) >= 0 ? "bg-sage bg-gold" : "bg-terra"
-                    )} />
-                    <div>
-                      <span className="text-[9px] font-black uppercase text-dust/60 tracking-widest block leading-none mb-1">Balance</span>
-                      <span className="text-sm font-bold text-espresso">
-                        {formatCurrency(timeFilter === 'today' ? netBalance : trendData.reduce((acc, d) => acc + d.ventas - d.gastos, 0))}
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </motion.div>
 
@@ -672,8 +619,8 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299' }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8E9299' }} tickFormatter={(val) => `$${val}`} />
                     <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={28}>
-                      {expenseChartData.map((entry) => (
-                        <Cell key={`bar-${entry.name}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
+                      {expenseChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
                       ))}
                     </Bar>
                     <Tooltip formatter={(val: number) => [`$${val.toFixed(2)}`, 'Gasto']} cursor={{ fill: 'rgba(92, 84, 78, 0.05)' }} />
@@ -681,8 +628,8 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
                 ) : (
                   <PieChart>
                     <Pie data={expenseChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="amount">
-                      {expenseChartData.map((entry) => (
-                        <Cell key={`pie-${entry.name}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
+                      {expenseChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={EXPENSE_CATEGORY_STYLES[entry.name]?.hex || '#5c544e'} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(val: number) => [`$${val.toFixed(2)}`, 'Gasto']} />
@@ -829,8 +776,8 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={categoryChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value">
-                    {categoryChartData.map((entry) => (
-                      <Cell key={`cat-cell-${entry.name}`} fill={getCategoryStyle(entry.name).hex} />
+                    {categoryChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getCategoryStyle(entry.name).hex} />
                     ))}
                   </Pie>
                   <Tooltip />

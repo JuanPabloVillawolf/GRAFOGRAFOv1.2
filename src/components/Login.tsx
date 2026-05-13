@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { User, Lock, LogIn, Coffee, Settings } from 'lucide-react';
+import { User, Lock, LogIn, Coffee } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (username: string, password: string) => Promise<void>;
-  onOpenSettings: () => void;
-  googleConnected: boolean;
   isLoading: boolean;
   error: string | null;
 }
 
-export function Login({ onLogin, onOpenSettings, googleConnected, isLoading, error }: LoginProps) {
+export function Login({ onLogin, isLoading, error }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -20,20 +18,7 @@ export function Login({ onLogin, onOpenSettings, googleConnected, isLoading, err
   };
 
   return (
-    <div className="min-h-screen bg-cream flex items-center justify-center p-4 relative">
-      <button 
-        onClick={onOpenSettings}
-        className="absolute top-6 right-6 p-3 bg-white rounded-full shadow-lg border border-parchment text-dust hover:text-espresso transition-colors z-10"
-        title="Configuración de Google Sheets"
-      >
-        <div className="relative">
-          <Settings size={20} />
-          {!googleConnected && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
-          )}
-        </div>
-      </button>
-
+    <div className="min-h-screen bg-cream flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

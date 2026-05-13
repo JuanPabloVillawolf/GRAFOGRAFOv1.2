@@ -51,7 +51,6 @@ export default function App() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   
   const lastSyncedAccountsRef = useRef<string>('');
-  const lastManualSyncTimeRef = useRef<number>(0);
   const isSyncInProgressRef = useRef<boolean>(false);
 
   const syncPendingAccounts = async (accountsToSync?: PendingAccount[]) => {
@@ -62,15 +61,12 @@ export default function App() {
     const accounts = accountsToSync || pendingAccounts;
     const accountsJson = JSON.stringify(accounts);
     
-    if (accountsJson === lastSyncedAccountsRef.current && !accountsToSync) {
-      if (isSyncInProgressRef.current) return;
-    }
+    // Skip if same as last sync or if a sync is already in progress
+    if (accountsJson === lastSyncedAccountsRef.current || isSyncInProgressRef.current) return;
     
     isSyncInProgressRef.current = true;
-    if (accountsToSync) lastManualSyncTimeRef.current = Date.now();
     setIsSyncing(true);
     try {
-      console.log('Sincronizando cuentas pendientes con Google Sheets...', accounts.length);
       const response = await fetch('/api/sheets/pending-accounts/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,15 +78,14 @@ export default function App() {
       });
       
       if (response.ok) {
-        console.log('Sincronización exitosa.');
         setLastSyncTime(new Date());
         lastSyncedAccountsRef.current = accountsJson;
       } else {
         const result = await response.json();
-        console.error('Error del servidor al sincronizar:', result.error || response.statusText);
+        console.error('Respuesta de error al sincronizar:', result.error || response.statusText);
       }
     } catch (error) {
-      console.error('Error de red al sincronizar:', error);
+      console.error('Error de red al sincronizar cuentas pendientes:', error);
     } finally {
       setIsSyncing(false);
       isSyncInProgressRef.current = false;
@@ -165,26 +160,16 @@ export default function App() {
         }),
       });
       
-      let data;
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response from server:', text);
-        throw new Error('El servidor respondió con un error inesperado. Revisa la configuración de Google Sheets.');
-      }
-
+      const data = await response.json();
       if (data.success) {
         setCurrentUser(data.user);
         localStorage.setItem('pos_user', JSON.stringify(data.user));
-        fetchData(googleTokens, templateId, true); // Silent fetch
+        fetchData(googleTokens, templateId); // Fetch data immediately to check for cash fund
       } else {
-        setLoginError(data.error || 'Usuario o contraseña incorrectos');
+        setLoginError(data.error || 'Error de autenticación');
       }
-    } catch (error: any) {
-      console.error('Detailed login error:', error);
-      setLoginError(error.message || 'Error de red al intentar conectar con el servidor.');
+    } catch (error) {
+      setLoginError('Error de red al intentar iniciar sesión.');
     } finally {
       setIsLoading(false);
     }
@@ -198,25 +183,10 @@ export default function App() {
   const handleGoogleAuth = async () => {
     try {
       const response = await fetch('/api/auth/google/url');
-      
-      let data;
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response from server during handleGoogleAuth:', text.substring(0, 500));
-        throw new Error('El servidor respondió con un error inesperado al solicitar la URL de Google. Revisa que el servidor se esté ejecutando correctamente.');
-      }
-      
-      if (data.url) {
-        window.open(data.url, 'google_auth', 'width=600,height=700');
-      } else {
-        throw new Error(data.error || 'No se recibió la URL de autenticación');
-      }
-    } catch (error: any) {
+      const { url } = await response.json();
+      window.open(url, 'google_auth', 'width=600,height=700');
+    } catch (error) {
       console.error('Error getting Google Auth URL:', error);
-      alert(error.message || 'Error al obtener la URL de autenticación de Google.');
     }
   };
 
@@ -233,20 +203,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokens, spreadsheetId }),
       });
-
-      let data;
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response from server during fetchData:', text);
-        if (!silent) {
-           alert('El servidor respondió con un error inesperado al cargar datos.');
-        }
-        return;
-      }
-
+      const data = await response.json();
       if (data.error) {
         if (!silent) {
           console.error('Server error fetching data:', data.error);
@@ -260,17 +217,12 @@ export default function App() {
       if (data.expenses) setExpenses(data.expenses);
       if (data.users) setUsers(data.users);
       if (data.pendingAccounts) {
-        // Only update if we don't have an active account being edited in POS
-        // AND if we haven't manually synced very recently (to avoid stale server data)
-        const hasNoRecentManualSync = Date.now() - lastManualSyncTimeRef.current > 15000; // Increased to 15s cooldown
-        const currentAccountsJson = JSON.stringify(pendingAccounts);
-        const incomingAccountsJson = JSON.stringify(data.pendingAccounts);
-        
-        const hasNoPendingLocalChanges = currentAccountsJson === lastSyncedAccountsRef.current;
-        
-        if (!activePendingAccount && hasNoRecentManualSync && (hasNoPendingLocalChanges || incomingAccountsJson !== lastSyncedAccountsRef.current)) {
+        // Only update pending accounts if we are not currently editing one
+        // to avoid losing local changes during a poll
+        if (!activePendingAccount) {
           setPendingAccounts(data.pendingAccounts);
-          lastSyncedAccountsRef.current = incomingAccountsJson;
+          // Update ref to avoid immediate re-sync of what we just downloaded
+          lastSyncedAccountsRef.current = JSON.stringify(data.pendingAccounts);
         }
       }
       if (data.cashLogs) {
@@ -381,7 +333,7 @@ export default function App() {
       }
       
       if (!customerName) return;
-      const finalName = (customerName || '').trim();
+      const finalName = customerName.trim();
       const normalizedFinalName = finalName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
       const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -392,7 +344,7 @@ export default function App() {
         const existingAccount = activePendingAccount 
           ? prev.find(a => a.id === activePendingAccount.id)
           : prev.find(a => {
-              const normalizedAccName = (a.customerName || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+              const normalizedAccName = a.customerName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
               return normalizedAccName === normalizedFinalName;
             });
 
@@ -580,40 +532,23 @@ export default function App() {
 
     try {
       if (isFullyPaid) {
-        // 1. OPTIMISTIC UPDATE FIRST: Remove from local state immediately
-        // This prevents the background poller from seeing it as "Abierta" and potentially re-adding it
-        // or overwriting other concurrent local changes.
-        let updatedAccounts: PendingAccount[] = [];
-        setPendingAccounts(prev => {
-          updatedAccounts = prev.filter(a => a.id !== account.id);
-          return updatedAccounts;
-        });
-        
-        // Update the sync ref immediately too
-        lastSyncedAccountsRef.current = JSON.stringify(updatedAccounts);
-
-        // 2. Perform sync of the list (one call)
-        await syncPendingAccounts(updatedAccounts);
-
-        if (activePendingAccount?.id === account.id) {
-          setActivePendingAccount(null);
-        }
-
-        // 3. Record all items as sales
+        // If fully paid, record all items as individual sales split by ALL payments (previous + session)
         const allPayments = [
           ...(account.payments || []).map(p => ({ method: p.method, amount: p.amount })),
           ...sessionPayments
         ];
         
+        // We calculate total actually paid to handle cases with tips or partial overpayment if any
         const actualTotalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
-        const salePromises = [];
 
         for (const item of account.items) {
           const itemTotal = item.price * item.quantity;
           
           for (let pIdx = 0; pIdx < allPayments.length; pIdx++) {
             const p = allPayments[pIdx];
+            // Distribute item price based on payment weights
             const portion = (p.amount / actualTotalPaid) * itemTotal;
+            // Record inventory reduction only in the first payment row of this item
             const qtyToRecord = pIdx === 0 ? item.quantity : 0;
 
             const newSale: Sale = {
@@ -628,26 +563,31 @@ export default function App() {
               note: `Liquidación cuenta: ${account.customerName}`
             };
 
-            // Update local sales list for immediate UI feedback
             setSales(prev => [newSale, ...prev]);
             
-            // Collect promises for final waiting
-            salePromises.push(
-              fetch('/api/sheets/sale', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  tokens: googleTokens, 
-                  spreadsheetId: templateId, 
-                  sale: { ...newSale, username: transactionUsername },
-                  productId: item.productId
-                }),
-              }).catch(err => console.error("Error al registrar venta de liquidación:", err))
-            );
+            await fetch('/api/sheets/sale', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                tokens: googleTokens, 
+                spreadsheetId: templateId, 
+                sale: { ...newSale, username: transactionUsername },
+                productId: item.productId
+              }),
+            });
           }
         }
-        await Promise.all(salePromises);
-        console.log("Todas las ventas de la liquidación han sido registradas.");
+
+        let updatedAccounts: PendingAccount[] = [];
+        setPendingAccounts(prev => {
+          updatedAccounts = prev.filter(a => a.id !== account.id);
+          return updatedAccounts;
+        });
+        
+        syncPendingAccounts(updatedAccounts);
+        if (activePendingAccount?.id === account.id) {
+          setActivePendingAccount(null);
+        }
       } else {
         // Partial session payment: We ONLY update the pending account tracking.
         // We don't record individual sales yet to avoid double counting items later.
@@ -879,13 +819,7 @@ export default function App() {
   if (!currentUser) {
     return (
       <>
-        <Login 
-          onLogin={handleLogin} 
-          onOpenSettings={() => setShowSettings(true)}
-          googleConnected={!!googleTokens}
-          isLoading={isLoading} 
-          error={loginError} 
-        />
+        <Login onLogin={handleLogin} isLoading={isLoading} error={loginError} />
         {showSettings && (
           <div className="fixed inset-0 z-50 bg-espresso/40 backdrop-blur-sm flex items-center justify-center p-4">
             <motion.div 
@@ -921,29 +855,6 @@ export default function App() {
                     placeholder="Pega el ID o URL de tu Google Sheet"
                   />
                 </div>
-
-                <div className="pt-4 border-t border-parchment">
-                  <h4 className="text-[10px] font-bold text-dust uppercase tracking-wider mb-2 ml-1">Estado de Conexión</h4>
-                  <div className="bg-cream rounded-lg p-3 border border-parchment text-[10px] space-y-1.5">
-                     <div className="flex justify-between items-center">
-                       <span className="text-dust">Servidor API:</span>
-                       <span className="text-green-600 font-bold">ACTIVO</span>
-                     </div>
-                     <div className="flex justify-between items-center">
-                       <span className="text-dust">Cuenta Google:</span>
-                       <span className={googleTokens ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>
-                         {googleTokens ? "CONECTADA" : "PENDIENTE"}
-                       </span>
-                     </div>
-                     <div className="flex justify-between items-center">
-                       <span className="text-dust">Hoja de Cálculo:</span>
-                       <span className={templateId ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>
-                         {templateId ? "CONFIGURADA" : "VACÍO"}
-                       </span>
-                     </div>
-                  </div>
-                </div>
-
                 <button 
                   onClick={() => setShowSettings(false)}
                   className="w-full py-3 bg-espresso text-cream rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-bark transition-colors"

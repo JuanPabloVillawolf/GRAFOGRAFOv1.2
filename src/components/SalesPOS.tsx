@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Product, Sale, PendingAccount, Category } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { 
@@ -373,15 +373,15 @@ const ICON_MAP: Record<string, any> = {
   'estrella': Sparkles,
 };
 
-const getCategoryStyle = (cat: string | undefined) => {
-  const normalized = String(cat || 'Otros').trim().toLowerCase();
+const getCategoryStyle = (cat: string) => {
+  const normalized = cat.trim().toLowerCase();
   const key = Object.keys(CATEGORY_STYLES).find(k => k.toLowerCase() === normalized);
   return CATEGORY_STYLES[key || 'Otros'];
 };
 
 const getProductIcon = (iconName: string | undefined, category: string) => {
   if (iconName) {
-    const normalized = String(iconName).trim().toLowerCase();
+    const normalized = iconName.trim().toLowerCase();
     if (ICON_MAP[normalized]) return ICON_MAP[normalized];
   }
   return getCategoryStyle(category).icon;
@@ -411,7 +411,7 @@ export function SalesPOS({
     if (!searchTerm) return [];
     const term = searchTerm.toLowerCase();
     return products
-      .filter(p => p.name && p.name.toLowerCase().includes(term))
+      .filter(p => p.name.toLowerCase().includes(term))
       .sort((a, b) => {
         const aName = a.name.toLowerCase();
         const bName = b.name.toLowerCase();
@@ -439,17 +439,6 @@ export function SalesPOS({
   const [posNote, setPosNote] = useState('');
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const cartTotal = useMemo(() => {
     return posCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -506,12 +495,6 @@ export function SalesPOS({
       }
       return [...prev, { product, quantity: 1 }];
     });
-    
-    // Clear search to "exit" search mode after selecting
-    if (searchTerm) {
-      setSearchTerm('');
-      setShowSuggestions(false);
-    }
   };
 
   const updateCartQuantity = (productId: string, delta: number) => {
@@ -587,7 +570,7 @@ export function SalesPOS({
 
     try {
       if (pendingCheckoutMethod === 'Pendiente') {
-        let finalCustomerName = (posNote?.trim() || posCustomerName?.trim() || '').trim();
+        let finalCustomerName = posNote.trim() || posCustomerName.trim();
         
         if (!selectedAccountId && !finalCustomerName) {
           alert('Por favor, ingresa un nombre o referencia para la cuenta pendiente en el campo de "Nombre del Cliente".');
@@ -629,7 +612,7 @@ export function SalesPOS({
               qtyToRecord, 
               payment.method, 
               portion, 
-              posCustomerName?.trim() || '', 
+              posCustomerName.trim(), 
               selectedUsername,
               posNote
             );
@@ -690,7 +673,7 @@ export function SalesPOS({
   };
 
   return (
-    <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4 pb-32 lg:pb-8">
+    <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4">
       {/* Active Pending Account Banner */}
       <AnimatePresence>
         {activePendingAccount && (
@@ -732,7 +715,7 @@ export function SalesPOS({
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
           <div className="lg:col-span-4 space-y-6">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1" ref={searchRef}>
+            <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-dust" size={18} />
               <input 
                 type="text"
@@ -746,8 +729,8 @@ export function SalesPOS({
                 onFocus={() => setShowSuggestions(true)}
                 onKeyDown={handleKeyDown}
                 className={cn(
-                  "w-full bg-white border border-mist rounded-xl py-3 pl-12 pr-10 text-sm outline-none focus:border-bark transition-all relative",
-                  showSuggestions && searchTerm && "shadow-xl ring-2 ring-bark/5"
+                  "w-full bg-white border border-mist rounded-xl py-3 pl-12 pr-10 text-sm outline-none focus:border-bark transition-all relative z-[60]",
+                  showSuggestions && searchTerm && "shadow-2xl ring-4 ring-bark/5"
                 )}
               />
               {searchTerm && (
@@ -756,11 +739,24 @@ export function SalesPOS({
                     setSearchTerm('');
                     setShowSuggestions(false);
                   }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-dust hover:text-espresso"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-dust hover:text-espresso z-[61]"
                 >
                   <X size={16} />
                 </button>
               )}
+
+              {/* Search Backdrop */}
+              <AnimatePresence>
+                {showSuggestions && searchTerm && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowSuggestions(false)}
+                    className="fixed inset-0 z-[55] bg-cream/80 backdrop-blur-[2px]"
+                  />
+                )}
+              </AnimatePresence>
 
               {/* Autocomplete Suggestions */}
               <AnimatePresence>
@@ -769,7 +765,7 @@ export function SalesPOS({
                     initial={{ opacity: 0, y: -10, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                    className="absolute z-10 left-0 right-0 top-full mt-2 bg-white border border-mist rounded-2xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto"
+                    className="absolute z-[60] left-0 right-0 top-full mt-2 bg-white border border-mist rounded-2xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto"
                     onMouseLeave={() => setActiveSuggestionIndex(-1)}
                   >
                     <div className="px-3 py-2 bg-cream/30 text-[10px] font-bold text-dust uppercase tracking-wider border-b border-mist/30">
@@ -777,7 +773,7 @@ export function SalesPOS({
                     </div>
                     {filteredProducts.slice(0, 8).map((product, idx) => (
                       <button
-                        key={`${product.id}-${idx}`}
+                        key={product.id}
                         onMouseEnter={() => setActiveSuggestionIndex(idx)}
                         onClick={() => {
                           handleAddToCart(product);
@@ -1263,31 +1259,28 @@ export function SalesPOS({
                     <div className="space-y-4">
                       <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-2">Métodos de Pago</div>
                       <div className="space-y-2">
-                        {currentSalesPayments.map((p, idx) => {
-                          const paymentKey = `${p.method}-${idx}-${p.amount}`;
-                          return (
-                            <div key={paymentKey} className="flex items-center gap-2 bg-cream/40 p-2 rounded-xl border border-mist/30">
-                              <div className="flex-1">
-                                <div className="text-[10px] font-bold text-dust ml-1 mb-1">{p.method}</div>
-                                <div className="relative">
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-dust">$</span>
-                                  <input 
-                                    type="number"
-                                    value={p.amount}
-                                    onChange={(e) => updatePaymentAmount(idx, e.target.value)}
-                                    className="w-full bg-white border border-mist rounded-lg py-1.5 pl-6 pr-3 text-sm font-bold text-espresso outline-none focus:border-gold"
-                                  />
-                                </div>
+                        {currentSalesPayments.map((p, idx) => (
+                          <div key={idx} className="flex items-center gap-2 bg-cream/40 p-2 rounded-xl border border-mist/30">
+                            <div className="flex-1">
+                              <div className="text-[10px] font-bold text-dust ml-1 mb-1">{p.method}</div>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-dust">$</span>
+                                <input 
+                                  type="number"
+                                  value={p.amount}
+                                  onChange={(e) => updatePaymentAmount(idx, e.target.value)}
+                                  className="w-full bg-white border border-mist rounded-lg py-1.5 pl-6 pr-3 text-sm font-bold text-espresso outline-none focus:border-gold"
+                                />
                               </div>
-                              <button 
-                                onClick={() => removePaymentMethod(idx)}
-                                className="p-2 text-red-300 hover:text-red-500 transition-colors mt-4"
-                              >
-                                <X size={16} />
-                              </button>
                             </div>
-                          );
-                        })}
+                            <button 
+                              onClick={() => removePaymentMethod(idx)}
+                              className="p-2 text-red-300 hover:text-red-500 transition-colors mt-4"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
 
                       {remainingPaymentBalance > 0 && (
