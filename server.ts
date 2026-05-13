@@ -15,6 +15,12 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Request logging middleware
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+  });
+
   // Check environment variables
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     console.warn("WARNING: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing. Google Sheets integration will not work.");
@@ -30,23 +36,37 @@ async function startServer() {
 
   // API Routes
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      env: {
+        hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+        hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+        appUrl: process.env.APP_URL || 'not-set',
+        nodeEnv: process.env.NODE_ENV || 'development'
+      }
+    });
   });
 
   // 1. Get Google Auth URL
   app.get("/api/auth/google/url", (req, res) => {
-    const scopes = [
-      "https://www.googleapis.com/auth/spreadsheets",
-      "https://www.googleapis.com/auth/drive.file",
-    ];
+    try {
+      const scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file",
+      ];
 
-    const url = oauth2Client.generateAuthUrl({
-      access_type: "offline",
-      scope: scopes,
-      prompt: "consent",
-    });
+      const url = oauth2Client.generateAuthUrl({
+        access_type: "offline",
+        scope: scopes,
+        prompt: "consent",
+      });
 
-    res.json({ url });
+      res.json({ url });
+    } catch (error: any) {
+      console.error("Auth URL error:", error);
+      res.status(500).json({ error: "Error al generar la URL de autenticación: " + error.message });
+    }
   });
 
   // 2. OAuth Callback
@@ -251,15 +271,6 @@ async function startServer() {
         error: `Error de conexión con Google Sheets: ${error.message}. Verifica que el ID de la hoja sea correcto y que las pestañas (Inventario, Ventas, etc.) existan.` 
       });
     }
-  });
-
-  // Global error handler to ensure JSON responses
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error("Global error handler:", err);
-    res.status(500).json({
-      error: "Error interno del servidor",
-      message: err.message
-    });
   });
 
   // 4. Login Validation
@@ -739,6 +750,22 @@ async function startServer() {
     }
   });
 
+  // Global error handler to ensure JSON responses
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Global error handler:", err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "Error interno del servidor",
+        message: err.message
+      });
+    }
+  });
+
+  // 404 handler for API routes
+  app.use("/api/*", (req, res) => {
+    res.status(404).json({ error: "API endpoint no encontrado", path: req.originalUrl });
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const { createServer } = await import("vite");
@@ -760,4 +787,6 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("FATAL: Error al iniciar el servidor:", err);
+});

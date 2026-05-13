@@ -198,11 +198,25 @@ export default function App() {
   const handleGoogleAuth = async () => {
     try {
       const response = await fetch('/api/auth/google/url');
-      const { url } = await response.json();
-      window.open(url, 'google_auth', 'width=600,height=700');
-    } catch (error) {
+      
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response from server during handleGoogleAuth:', text.substring(0, 500));
+        throw new Error('El servidor respondió con un error inesperado al solicitar la URL de Google. Revisa que el servidor se esté ejecutando correctamente.');
+      }
+      
+      if (data.url) {
+        window.open(data.url, 'google_auth', 'width=600,height=700');
+      } else {
+        throw new Error(data.error || 'No se recibió la URL de autenticación');
+      }
+    } catch (error: any) {
       console.error('Error getting Google Auth URL:', error);
-      alert('Error al obtener la URL de autenticación de Google.');
+      alert(error.message || 'Error al obtener la URL de autenticación de Google.');
     }
   };
 
