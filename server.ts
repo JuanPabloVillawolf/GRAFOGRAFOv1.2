@@ -248,9 +248,18 @@ async function startServer() {
     } catch (error: any) {
       console.error("Error al obtener datos de Google Sheets:", error);
       res.status(500).json({ 
-        error: `Error de conexión con Google Sheets: ${error.message}. Verifica que el ID de la hoja sea correcto y que hayas otorgado los permisos necesarios.` 
+        error: `Error de conexión con Google Sheets: ${error.message}. Verifica que el ID de la hoja sea correcto y que las pestañas (Inventario, Ventas, etc.) existan.` 
       });
     }
+  });
+
+  // Global error handler to ensure JSON responses
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Global error handler:", err);
+    res.status(500).json({
+      error: "Error interno del servidor",
+      message: err.message
+    });
   });
 
   // 4. Login Validation
