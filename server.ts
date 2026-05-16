@@ -459,8 +459,34 @@ const oauth2Client = new google.auth.OAuth2(
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
-      // 1. Record all sales in one append call
-      const saleValues = sales.map((s: any) => {
+      // IDEMPOTENCY CHECK: Read last few sales to see if these IDs already exist
+      // We check the first column (ID) of the last 100 rows
+      let existingIds = new Set();
+      try {
+        const checkRes = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "Ventas!A2:A", // All IDs
+        });
+        if (checkRes.data.values) {
+          existingIds = new Set(checkRes.data.values.map(row => row[0]));
+        }
+      } catch (e) {
+        console.log("No existing sales found or error checking for duplicates");
+      }
+
+      const filteredSales = sales.filter(s => !existingIds.has(s.id));
+      const duplicatesCount = sales.length - filteredSales.length;
+
+      if (duplicatesCount > 0) {
+        console.log(`Detected and ignored ${duplicatesCount} duplicate sale IDs`);
+      }
+
+      if (filteredSales.length === 0) {
+        return res.json({ success: true, message: "Sales already recorded" });
+      }
+
+      // 1. Record all NEW sales in one append call
+      const saleValues = filteredSales.map((s: any) => {
         const a1 = parseFloat(s.amount) || 0;
         const a2 = parseFloat(s.amount2) || 0;
         const a3 = parseFloat(s.amount3) || 0;
@@ -794,7 +820,7 @@ const oauth2Client = new google.auth.OAuth2(
       // First, clear existing data (except headers)
       await sheets.spreadsheets.values.clear({
         spreadsheetId,
-        range: "Cuentas Pendientes!A2:G",
+        range: "Cuentas Pendientes!A2:G1000",
       });
 
       if (accounts.length > 0) {
