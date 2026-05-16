@@ -49,7 +49,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
     return current;
   }, [currentDate, groupedSales, searchTerm]);
 
-  const currentTotal = filteredSales.reduce((acc, s) => acc + s.amount, 0);
+  const currentTotal = filteredSales.reduce((acc, s) => acc + s.amount + (s.amount2 || 0) + (s.amount3 || 0), 0);
 
   return (
     <div className="max-w-none mx-auto space-y-6 px-2 lg:px-4">
@@ -142,14 +142,26 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={cn(
-                          "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider block w-fit shadow-sm border",
-                          sale.paymentMethod.includes('Gratis') 
-                            ? "bg-white border-parchment text-dust" 
-                            : "bg-espresso border-espresso text-cream"
-                        )}>
-                          {sale.paymentMethod}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={cn(
+                            "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider block w-fit shadow-sm border",
+                            sale.paymentMethod?.includes('Gratis') 
+                              ? "bg-white border-parchment text-dust" 
+                              : "bg-espresso border-espresso text-cream"
+                          )}>
+                            {sale.paymentMethod}
+                          </span>
+                          {sale.paymentMethod2 && (
+                            <span className="px-3 py-1.5 bg-espresso/80 border border-espresso text-cream rounded-xl text-[10px] font-bold uppercase tracking-wider block w-fit shadow-sm">
+                              {sale.paymentMethod2}
+                            </span>
+                          )}
+                          {sale.paymentMethod3 && (
+                            <span className="px-3 py-1.5 bg-espresso/60 border border-espresso text-cream rounded-xl text-[10px] font-bold uppercase tracking-wider block w-fit shadow-sm">
+                              {sale.paymentMethod3}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2 text-dust">
@@ -160,7 +172,7 @@ export function SalesHistory({ sales, expenses, cashLogs }: SalesHistoryProps) {
                         </div>
                       </td>
                       <td className="px-6 py-4 font-serif text-espresso font-bold text-right text-base tracking-tight whitespace-nowrap">
-                        {formatCurrency(sale.amount)}
+                        {formatCurrency(sale.amount + (sale.amount2 || 0) + (sale.amount3 || 0))}
                       </td>
                     </tr>
                   ))}

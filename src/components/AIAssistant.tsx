@@ -48,7 +48,7 @@ export function AIAssistant({ sales, products }: AIAssistantProps) {
       const context = `
         Eres el asistente inteligente de "Pánceas", una librería-cafetería.
         Datos actuales:
-        - Ventas hoy: ${sales.length} transacciones, Total: $${sales.reduce((acc, s) => acc + s.amount, 0)}
+        - Ventas hoy: ${sales.length} transacciones, Total: $${sales.reduce((acc, s) => acc + s.amount + (s.amount2 || 0) + (s.amount3 || 0), 0)}
         - Inventario: ${products.length} productos registrados.
         - Alertas de stock: ${products.filter(p => p.stock < 5).map(p => `${p.name} (${p.stock})`).join(', ')}
         

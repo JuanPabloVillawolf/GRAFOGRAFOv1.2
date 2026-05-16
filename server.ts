@@ -10,7 +10,7 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 // Google OAuth Setup
 const oauth2Client = new google.auth.OAuth2(
@@ -86,7 +86,7 @@ const oauth2Client = new google.auth.OAuth2(
 
       const requiredSheets = [
         { title: "Inventario", headers: ["ID", "Nombre", "Categoría", "Precio", "Stock", "Icono"] },
-        { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago", "Usuario", "Nota"] },
+        { title: "Ventas", headers: ["ID Transacción", "Fecha/Hora", "Producto", "Categoría", "Cantidad", "Precio Unit.", "Total", "Método de Pago", "Usuario", "Nota", "Metodo Pago 2", "Total Metodo Pago 2", "Metodo Pago 3", "Total Metodo Pago 3"] },
         { title: "Movimientos", headers: ["Fecha/Hora", "ID Producto", "Producto", "Tipo", "Cantidad", "Stock Resultante", "Notas", "Usuario"] },
         { title: "Usuarios", headers: ["Usuario", "Contraseña", "Nombre", "Rol"] },
         { title: "Caja", headers: ["Fecha", "Usuario", "Tipo", "Monto", "Notas"] },
@@ -99,7 +99,7 @@ const oauth2Client = new google.auth.OAuth2(
       try {
         batchRes = await sheets.spreadsheets.values.batchGet({
           spreadsheetId,
-          ranges: requiredSheets.map(s => `${s.title}!A2:L`)
+          ranges: requiredSheets.map(s => `${s.title}!A2:Z`)
         });
       } catch (err: any) {
         // If sheets don't exist, initialize them
@@ -133,7 +133,7 @@ const oauth2Client = new google.auth.OAuth2(
           // Retry fetch
           batchRes = await sheets.spreadsheets.values.batchGet({
             spreadsheetId,
-            ranges: requiredSheets.map(s => `${s.title}!A2:L`)
+            ranges: requiredSheets.map(s => `${s.title}!A2:Z`)
           });
         } else {
           throw err;
@@ -171,7 +171,11 @@ const oauth2Client = new google.auth.OAuth2(
         amount: parseFloat(row[6]) || 0,
         paymentMethod: row[7] || "Efectivo",
         username: row[8] || "",
-        note: row[9] || ""
+        note: row[9] || "",
+        paymentMethod2: row[10] || "",
+        amount2: parseFloat(row[11]) || 0,
+        paymentMethod3: row[12] || "",
+        amount3: parseFloat(row[13]) || 0
       })).reverse(); // Newest first
 
       const movements = getSheetValues("Movimientos").map(row => ({
@@ -364,6 +368,12 @@ const oauth2Client = new google.auth.OAuth2(
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
+      const a1 = parseFloat(sale.amount) || 0;
+      const a2 = parseFloat(sale.amount2) || 0;
+      const a3 = parseFloat(sale.amount3) || 0;
+      const totalAmount = a1 + a2 + a3;
+      const unitPrice = sale.quantity > 0 ? totalAmount / sale.quantity : 0;
+
       // 1. Append to Ventas
       await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -376,18 +386,22 @@ const oauth2Client = new google.auth.OAuth2(
             sale.productName,
             sale.category,
             sale.quantity,
-            sale.quantity > 0 ? sale.amount / sale.quantity : 0,
-            sale.amount,
+            unitPrice,
+            a1,
             sale.paymentMethod,
             sale.username || "",
-            sale.note || ""
+            sale.note || "",
+            sale.paymentMethod2 || "",
+            a2,
+            sale.paymentMethod3 || "",
+            a3
           ]]
         }
       });
 
       // 2. Update Inventory Stock (only if quantity is not 0)
       if (sale.quantity !== 0) {
-        const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
+        const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:Z" });
         const inventoryRows = inventoryRes.data.values || [];
         const rowIndex = inventoryRows.findIndex((row, idx) => {
           const id = row[0] || `row-${idx + 2}`;
@@ -435,6 +449,7 @@ const oauth2Client = new google.auth.OAuth2(
 
   // 7b. Record Batch Sales (Optimized for multiple items/payments)
   app.post("/api/sheets/sales/batch", async (req, res) => {
+    console.log("Batch sales request received", { salesCount: req.body?.sales?.length });
     const { tokens, spreadsheetId, sales, inventoryUpdates } = req.body;
     if (!tokens || !spreadsheetId || !sales || !Array.isArray(sales)) {
       return res.status(400).json({ error: "Faltan datos para ventas masivas" });
@@ -445,18 +460,30 @@ const oauth2Client = new google.auth.OAuth2(
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
       // 1. Record all sales in one append call
-      const saleValues = sales.map((s: any) => [
-        s.id,
-        s.timestamp,
-        s.productName,
-        s.category,
-        s.quantity,
-        s.quantity > 0 ? s.amount / s.quantity : 0,
-        s.amount,
-        s.paymentMethod,
-        s.username || "",
-        s.note || ""
-      ]);
+      const saleValues = sales.map((s: any) => {
+        const a1 = parseFloat(s.amount) || 0;
+        const a2 = parseFloat(s.amount2) || 0;
+        const a3 = parseFloat(s.amount3) || 0;
+        const totalAmount = a1 + a2 + a3;
+        const unitPrice = s.quantity > 0 ? totalAmount / s.quantity : 0;
+        
+        return [
+          s.id,
+          s.timestamp,
+          s.productName,
+          s.category,
+          s.quantity,
+          unitPrice,
+          a1,
+          s.paymentMethod,
+          s.username || "",
+          s.note || "",
+          s.paymentMethod2 || "",
+          a2,
+          s.paymentMethod3 || "",
+          a3
+        ];
+      });
 
       await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -489,7 +516,7 @@ const oauth2Client = new google.auth.OAuth2(
         // but we can group them if needed. For now, since it's inventory, it's safer per-row).
         // Actually, let's keep it simple but reliable.
         for (const update of inventoryUpdates) {
-          const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:E" });
+          const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:Z" });
           const inventoryRows = inventoryRes.data.values || [];
           const rowIndex = inventoryRows.findIndex((row, idx) => (row[0] || `row-${idx + 2}`) === update.productId);
           
@@ -520,7 +547,7 @@ const oauth2Client = new google.auth.OAuth2(
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
 
-      const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:F" });
+      const inventoryRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: "Inventario!A2:Z" });
       const inventoryRows = inventoryRes.data.values || [];
       const rowIndex = inventoryRows.findIndex((row, idx) => {
         const id = row[0] || `row-${idx + 2}`;

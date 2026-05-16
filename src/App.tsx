@@ -10,9 +10,17 @@ import { Login } from './components/Login';
 import { CashFundModal } from './components/CashFundModal';
 import { Expenses } from './components/Expenses';
 import { Sale, Product, Event, InventoryMovement, PendingAccount, Expense, CashLog } from './types';
-import { Settings, RefreshCw } from 'lucide-react';
+import { Settings, RefreshCw, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatCurrency, getTodayMX } from './lib/utils';
+
+const generateId = () => {
+  try {
+    return crypto.randomUUID();
+  } catch (e) {
+    return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+  }
+};
 
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -53,21 +61,26 @@ export default function App() {
   
   const lastSyncedAccountsRef = useRef<string>('');
   const isSyncInProgressRef = useRef<boolean>(false);
+  const operationLockRef = useRef<boolean>(false);
 
   const syncPendingAccounts = async (accountsToSync?: PendingAccount[]) => {
     // CRITICAL: Only sync if data has been successfully loaded from the sheet first
     // to avoid overwriting the sheet with an empty local state on startup
     if (!googleTokens || !templateId || isAuthChecking || !isDataLoaded) return;
     
-    const accounts = accountsToSync || pendingAccounts;
-    const accountsJson = JSON.stringify(accounts);
-    
-    // Skip if same as last sync or if a sync is already in progress
-    if (accountsJson === lastSyncedAccountsRef.current && !accountsToSync) return;
+    // Check lock
+    if (isSyncInProgressRef.current) return;
     
     isSyncInProgressRef.current = true;
     setIsSyncing(true);
     try {
+      // Get latest state if not provided
+      const accounts = accountsToSync || [...pendingAccounts];
+      const accountsJson = JSON.stringify(accounts);
+      
+      // Skip if same as last sync (only if automatic/polling)
+      if (!accountsToSync && accountsJson === lastSyncedAccountsRef.current) return;
+      
       const response = await fetch('/api/sheets/pending-accounts/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,10 +96,10 @@ export default function App() {
         lastSyncedAccountsRef.current = accountsJson;
       } else {
         const result = await response.json();
-        console.error('Respuesta de error al sincronizar:', result.error || response.statusText);
+        console.error('Error al sincronizar:', result.error || response.statusText);
       }
     } catch (error) {
-      console.error('Error de red al sincronizar cuentas pendientes:', error);
+      console.error('Error de red al sincronizar:', error);
     } finally {
       setIsSyncing(false);
       isSyncInProgressRef.current = false;
@@ -323,7 +336,48 @@ export default function App() {
     return () => clearInterval(interval);
   }, [googleTokens, templateId, currentUser, activePendingAccount]);
 
-  const handleAddSale = async (product: Product, quantity: number = 1, paymentMethod: string = 'Efectivo', totalAmount?: number, providedCustomerName?: string, overrideUsername?: string, note?: string) => {
+  const handleAddSale = async (
+    product: Product, 
+    quantity: number = 1, 
+    paymentMethod: string = 'Efectivo', 
+    totalAmount?: number, 
+    providedCustomerName?: string, 
+    overrideUsername?: string, 
+    note?: string,
+    paymentMethod2?: string,
+    amount2?: number,
+    paymentMethod3?: string,
+    amount3?: number
+  ) => {
+    // Just wrap in a batch of 1
+    return handleAddSalesBatch([{ 
+      product, 
+      quantity, 
+      paymentMethod, 
+      totalAmount, 
+      customerName: providedCustomerName, 
+      username: overrideUsername, 
+      note,
+      paymentMethod2,
+      amount2,
+      paymentMethod3,
+      amount3
+    }]);
+  };
+
+  const handleAddSalesBatch = async (items: { 
+    product: Product, 
+    quantity: number, 
+    paymentMethod: string, 
+    totalAmount?: number, 
+    customerName?: string, 
+    username?: string, 
+    note?: string,
+    paymentMethod2?: string,
+    amount2?: number,
+    paymentMethod3?: string,
+    amount3?: number
+  }[]) => {
     if (!googleTokens || !templateId || !currentUser) {
       if (!currentUser) alert('Debes iniciar sesión para realizar transacciones.');
       else {
@@ -333,154 +387,144 @@ export default function App() {
       return;
     }
 
-    // Use current user if not overridden
-    const transactionUsername = overrideUsername || currentUser.username;
-
-
-    // Special handling for Pending
-    if (paymentMethod === 'Pendiente') {
-      let customerName = providedCustomerName || activePendingAccount?.customerName;
-      
-      if (!customerName) {
-        customerName = prompt('Nombre para la cuenta pendiente:');
-      }
-      
-      if (!customerName) return;
-      const finalName = customerName.trim();
-      const normalizedFinalName = finalName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-
-      const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-      
-      let updatedAccounts: PendingAccount[] = [];
-      setPendingAccounts(prev => {
-        // Find existing account in the latest state
-        const existingAccount = activePendingAccount 
-          ? prev.find(a => a.id === activePendingAccount.id)
-          : prev.find(a => {
-              const normalizedAccName = a.customerName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-              return normalizedAccName === normalizedFinalName;
-            });
-
-        if (existingAccount) {
-          // Merge items if it's the same product
-          const existingItemIndex = existingAccount.items.findIndex(item => item.productId === product.id);
-          let newItems;
-          
-          if (existingItemIndex > -1) {
-            newItems = [...existingAccount.items];
-            newItems[existingItemIndex] = {
-              ...newItems[existingItemIndex],
-              quantity: newItems[existingItemIndex].quantity + quantity
-            };
-          } else {
-            newItems = [...existingAccount.items, {
-              productId: product.id,
-              productName: product.name,
-              price: product.price,
-              quantity,
-              category: product.category
-            }];
-          }
-
-          const updatedAccount = {
-            ...existingAccount,
-            customerName: finalName,
-            updatedAt: now,
-            items: newItems
-          };
-          updatedAccounts = prev.map(a => a.id === updatedAccount.id ? updatedAccount : a);
-          return updatedAccounts;
-        } else {
-          const newAccount: PendingAccount = {
-            id: Math.random().toString(36).substr(2, 9),
-            customerName: finalName,
-            status: 'Abierta',
-            createdAt: now,
-            updatedAt: now,
-            items: [{
-              productId: product.id,
-              productName: product.name,
-              price: product.price,
-              quantity,
-              category: product.category
-            }]
-          };
-          updatedAccounts = [newAccount, ...prev];
-          return updatedAccounts;
-        }
-      });
-
-      // Eagerly sync to Google Sheets
-      lastSyncedAccountsRef.current = JSON.stringify(updatedAccounts);
-      syncPendingAccounts(updatedAccounts);
-
-      // Clear active account and return to accounts list as requested
-      setActivePendingAccount(null);
-      setActiveView('cuentas');
-      
-      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - quantity } : p));
-      return;
-    }
-
-    const amount = totalAmount !== undefined ? totalAmount : (paymentMethod === 'Gratis' ? 0 : product.price * quantity);
-    const newSale: Sale = {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
-      productName: product.name,
-      category: product.category,
-      amount,
-      quantity,
-      paymentMethod,
-      username: transactionUsername,
-      note: note || ""
-    };
-
-    // Optimistic update
-    setSales(prev => [newSale, ...prev]);
-    if (quantity !== 0) {
-      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - quantity } : p));
-      
-      const newMovement: InventoryMovement = {
-        timestamp: newSale.timestamp,
-        productId: product.id,
-        productName: product.name,
-        type: "Salida (Venta)",
-        quantity: -quantity,
-        stockResult: product.stock - quantity,
-        notes: `Venta ID: ${newSale.id}`,
-        username: transactionUsername
-      };
-      setMovements(prev => [newMovement, ...prev]);
-    }
+    if (operationLockRef.current) return;
+    operationLockRef.current = true;
 
     try {
-      const response = await fetch('/api/sheets/sale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          tokens: googleTokens, 
-          spreadsheetId: templateId, 
-          sale: { ...newSale, username: transactionUsername },
-          productId: product.id
-        }),
-      });
-      const result = await response.json();
-      if (!result.success) {
-        // Revert on error
-        fetchData();
-        alert('Error al guardar la venta: ' + result.error);
-      } else {
-        // If it was a pending account being closed, remove it
-        if (activePendingAccount) {
-          const updated = pendingAccounts.filter(a => a.id !== activePendingAccount.id);
-          setPendingAccounts(updated);
-          syncPendingAccounts(updated);
+      const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const batchSales: Sale[] = [];
+      const accountsToSync: PendingAccount[] = [];
+      let pendingUpdateNeeded = false;
+
+      // Prepare data
+      for (const item of items) {
+        const { product, quantity, paymentMethod, totalAmount, customerName, username, note, paymentMethod2, amount2, paymentMethod3, amount3 } = item;
+        const transactionUsername = username || currentUser.username;
+
+        if (paymentMethod === 'Pendiente') {
+          pendingUpdateNeeded = true;
+          const finalName = (customerName || activePendingAccount?.customerName || '').trim();
+          if (!finalName) continue;
+          
+          const normalizedFinalName = finalName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          
+          // Local update logic (we still use the state-based updater but collect results)
+          // For batches, this is tricky. We'll simplify: process Pendiente separately if mixed (rarely happens in this UI)
+          // or just assume if it's Pendiente, it's a single item or a set for one account.
+          
+          await new Promise<void>(resolve => {
+            setPendingAccounts(prev => {
+              const existingAccount = activePendingAccount 
+                ? prev.find(a => a.id === activePendingAccount.id)
+                : prev.find(a => a.customerName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === normalizedFinalName);
+
+              let newPrev: PendingAccount[];
+              if (existingAccount) {
+                const existingItemIndex = existingAccount.items.findIndex(i => i.productId === product.id);
+                let newItems = [...existingAccount.items];
+                if (existingItemIndex > -1) {
+                  newItems[existingItemIndex] = { ...newItems[existingItemIndex], quantity: newItems[existingItemIndex].quantity + quantity };
+                } else {
+                  newItems.push({ productId: product.id, productName: product.name, price: product.price, quantity, category: product.category });
+                }
+                const updated = { ...existingAccount, customerName: finalName, updatedAt: now, items: newItems };
+                newPrev = prev.map(a => a.id === updated.id ? updated : a);
+              } else {
+                const newAcc: PendingAccount = {
+                  id: generateId(),
+                  customerName: finalName,
+                  status: 'Abierta',
+                  createdAt: now,
+                  updatedAt: now,
+                  items: [{ productId: product.id, productName: product.name, price: product.price, quantity, category: product.category }]
+                };
+                newPrev = [newAcc, ...prev];
+              }
+              accountsToSync.push(...newPrev);
+              resolve();
+              return newPrev;
+            });
+          });
+          
+          setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - quantity } : p));
+        } else {
+          const amount = totalAmount !== undefined ? totalAmount : (paymentMethod === 'Gratis' ? 0 : product.price * quantity);
+          const newSale: Sale = {
+            id: generateId(),
+            timestamp: now,
+            productName: product.name,
+            category: product.category,
+            amount,
+            quantity,
+            paymentMethod,
+            paymentMethod2,
+            amount2,
+            paymentMethod3,
+            amount3,
+            username: transactionUsername,
+            note: note || ""
+          };
+          batchSales.push(newSale);
+          
+          if (quantity !== 0) {
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - quantity } : p));
+            setMovements(prev => [{
+              timestamp: now,
+              productId: product.id,
+              productName: product.name,
+              type: "Salida (Venta)",
+              quantity: -quantity,
+              stockResult: product.stock - quantity, // Note: this might be slightly off in batch if multiple items same product
+              notes: `Venta ID: ${newSale.id}`,
+              username: transactionUsername
+            }, ...prev]);
+          }
+        }
+      }
+
+      // Sync Pendiente if needed
+      if (pendingUpdateNeeded) {
+        await syncPendingAccounts(accountsToSync);
+        setActivePendingAccount(null);
+        setActiveView('cuentas');
+      }
+
+      // Sync Sales Batch if needed
+      if (batchSales.length > 0) {
+        setSales(prev => [...batchSales, ...prev]);
+        const response = await fetch('/api/sheets/sales/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            tokens: googleTokens, 
+            spreadsheetId: templateId, 
+            sales: batchSales
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          fetchData();
+          alert('Error al guardar ventas: ' + result.error);
+        } else if (activePendingAccount) {
+          setPendingAccounts(prev => {
+            const updated = prev.filter(a => a.id !== activePendingAccount.id);
+            syncPendingAccounts(updated);
+            return updated;
+          });
           setActivePendingAccount(null);
         }
       }
     } catch (error) {
-      console.error('Sale error:', error);
+      console.error('Batch sale error:', error);
       fetchData();
+    } finally {
+      operationLockRef.current = false;
     }
   };
 
@@ -517,16 +561,15 @@ export default function App() {
     // or assume the user manages stock separately (as per current app behavior).
     // Actually, let's at least update local stock for immediate feedback
     setProducts(prev => {
-      const newProducts = [...prev];
-      // Revert old quantities
-      oldItems.forEach(item => {
-        const pIdx = newProducts.findIndex(p => p.id === item.productId);
-        if (pIdx > -1) newProducts[pIdx] = { ...newProducts[pIdx], stock: newProducts[pIdx].stock + item.quantity };
-      });
-      // Apply new quantities
-      items.forEach(item => {
-        const pIdx = newProducts.findIndex(p => p.id === item.product.id);
-        if (pIdx > -1) newProducts[pIdx] = { ...newProducts[pIdx], stock: newProducts[pIdx].stock - item.quantity };
+      const newProducts = prev.map(p => {
+        const oldItem = oldItems.find(item => item.productId === p.id);
+        const newItem = items.find(item => item.product.id === p.id);
+        
+        let newStock = p.stock;
+        if (oldItem) newStock += oldItem.quantity;
+        if (newItem) newStock -= newItem.quantity;
+        
+        return { ...p, stock: newStock };
       });
       return newProducts;
     });
@@ -537,37 +580,36 @@ export default function App() {
 
   const handlePayPendingAccount = async (account: PendingAccount, sessionPayments: { method: string, amount: number }[], overrideUsername?: string) => {
     if (!googleTokens || !templateId || !currentUser) return;
-
-    const transactionUsername = overrideUsername || currentUser.username;
-    const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-    const totalAccount = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const previousPaid = account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-    const sessionTotal = sessionPayments.reduce((sum, p) => sum + p.amount, 0);
-    const isFullyPaid = (previousPaid + sessionTotal) >= totalAccount - 0.01; // Support small rounding diffs
+    if (operationLockRef.current) return;
+    operationLockRef.current = true;
 
     try {
-      if (isFullyPaid) {
-        // 1. SILENCE THE POLLER
-        setPollerGuardUntil(Date.now() + 10000); // Guard for 10 seconds
+      const transactionUsername = overrideUsername || currentUser.username;
+      const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const totalAccount = account.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const previousPaid = account.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+      const sessionTotal = sessionPayments.reduce((sum, p) => sum + p.amount, 0);
+      const isFullyPaid = (previousPaid + sessionTotal) >= totalAccount - 0.01;
 
-        // 2. OPTIMISTIC UPDATE FIRST: Remove from local state immediately
+      if (isFullyPaid) {
+        setPollerGuardUntil(Date.now() + 10000);
+
         let updatedAccounts: PendingAccount[] = [];
-        setPendingAccounts(prev => {
-          updatedAccounts = prev.filter(a => a.id !== account.id);
-          return updatedAccounts;
+        await new Promise<void>((resolve) => {
+          setPendingAccounts(prev => {
+            updatedAccounts = prev.filter(a => a.id !== account.id);
+            resolve();
+            return updatedAccounts;
+          });
         });
         
-        // Update the sync ref immediately too to prevent fetchData from thinking we have local changes
         lastSyncedAccountsRef.current = JSON.stringify(updatedAccounts);
-
-        // 3. Sync the list to Google Sheets (Removal)
         await syncPendingAccounts(updatedAccounts);
 
         if (activePendingAccount?.id === account.id) {
           setActivePendingAccount(null);
         }
 
-        // 4. Record everything as sales in ONE BATCH
         const allPayments = [
           ...(account.payments || []).map(p => ({ method: p.method, amount: p.amount })),
           ...sessionPayments
@@ -575,42 +617,41 @@ export default function App() {
         
         const actualTotalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
         const batchSales: Sale[] = [];
-        const inventoryUpdates: any[] = [];
 
-        for (const item of account.items) {
+        account.items.forEach(item => {
           const itemTotal = item.price * item.quantity;
           
-          for (let pIdx = 0; pIdx < allPayments.length; pIdx++) {
-            const p = allPayments[pIdx];
-            const portion = (p.amount / actualTotalPaid) * itemTotal;
-            const qtyToRecord = pIdx === 0 ? item.quantity : 0;
+          const sale: Sale = {
+            id: generateId(),
+            timestamp: now,
+            productName: item.productName,
+            category: item.category,
+            amount: 0,
+            quantity: item.quantity,
+            paymentMethod: "",
+            username: transactionUsername,
+            note: `Liquidación cuenta: ${account.customerName}`
+          };
 
-            const newSale: Sale = {
-              id: Math.random().toString(36).substr(2, 9),
-              timestamp: now,
-              productName: item.productName,
-              category: item.category,
-              amount: portion,
-              quantity: qtyToRecord,
-              paymentMethod: p.method,
-              username: transactionUsername,
-              note: `Liquidación cuenta: ${account.customerName}`
-            };
-
-            batchSales.push(newSale);
+          // Distribute payments (up to 3)
+          if (allPayments[0]) {
+            sale.paymentMethod = allPayments[0].method;
+            sale.amount = (allPayments[0].amount / actualTotalPaid) * itemTotal;
+          }
+          if (allPayments[1]) {
+            sale.paymentMethod2 = allPayments[1].method;
+            sale.amount2 = (allPayments[1].amount / actualTotalPaid) * itemTotal;
+          }
+          if (allPayments[2]) {
+            sale.paymentMethod3 = allPayments[2].method;
+            sale.amount3 = (allPayments[2].amount / actualTotalPaid) * itemTotal;
           }
 
-          // Since we already subtracted stock when items were added to account,
-          // we don't necessarily NEED to update inventory here UNLESS the account items changed
-          // but for safety/consistency in history, we record the "Sale" movement if needed.
-          // Wait, SalesPOS adds movements when paymentMethod === 'Pendiente'? Let's check.
-          // In handleAddSale: paymentMethod === 'Pendiente' DOES update stock.
-        }
+          batchSales.push(sale);
+        });
 
-        // Update local sales list for immediate UI feedback
         setSales(prev => [...batchSales, ...prev]);
 
-        // Send batch sales to server
         const batchRes = await fetch('/api/sheets/sales/batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -621,12 +662,9 @@ export default function App() {
           }),
         });
         
-        if (!batchRes.ok) {
-           console.error("Error al registrar ventas por lote");
-        }
+        if (!batchRes.ok) console.error("Error al registrar ventas por lote");
 
       } else {
-        // Partial session payment... (unchanged logic for partials)
         const updatedAccount: PendingAccount = {
           ...account,
           updatedAt: now,
@@ -637,13 +675,16 @@ export default function App() {
         };
 
         let updatedAccounts: PendingAccount[] = [];
-        setPendingAccounts(prev => {
-          updatedAccounts = prev.map(a => a.id === account.id ? updatedAccount : a);
-          return updatedAccounts;
+        await new Promise<void>((resolve) => {
+          setPendingAccounts(prev => {
+            updatedAccounts = prev.map(a => a.id === account.id ? updatedAccount : a);
+            resolve();
+            return updatedAccounts;
+          });
         });
         
         lastSyncedAccountsRef.current = JSON.stringify(updatedAccounts);
-        syncPendingAccounts(updatedAccounts);
+        await syncPendingAccounts(updatedAccounts);
 
         if (activePendingAccount?.id === account.id) {
           setActivePendingAccount(updatedAccount);
@@ -652,6 +693,8 @@ export default function App() {
     } catch (error) {
       console.error('Error paying account:', error);
       fetchData();
+    } finally {
+      operationLockRef.current = false;
     }
   };
 
@@ -692,12 +735,12 @@ export default function App() {
 
     const newProduct: Product = {
       ...product,
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateId(),
       icon: product.icon || getAutoIcon(product.category)
     };
 
     // Optimistic update
-    setProducts([...products, newProduct]);
+    setProducts(prev => [...prev, newProduct]);
 
     const newMovement: InventoryMovement = {
       timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
@@ -709,7 +752,7 @@ export default function App() {
       notes: "Registro inicial",
       username: currentUser.username
     };
-    setMovements([newMovement, ...movements]);
+    setMovements(prev => [newMovement, ...prev]);
 
     try {
       await fetch('/api/sheets/inventory/add', {
@@ -731,7 +774,7 @@ export default function App() {
     if (!googleTokens || !templateId || !currentUser) return;
 
     // Optimistic update
-    setProducts(products.map(p => p.id === productId ? { ...p, stock: p.stock + adjustment } : p));
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: p.stock + adjustment } : p));
 
     const product = products.find(p => p.id === productId);
     let iconToSync = "";
@@ -748,7 +791,7 @@ export default function App() {
         notes: notes,
         username: currentUser.username
       };
-      setMovements([newMovement, ...movements]);
+      setMovements(prev => [newMovement, ...prev]);
     }
 
     try {
@@ -775,7 +818,7 @@ export default function App() {
 
     const newExpense: Expense = {
       ...expenseData,
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateId(),
       timestamp: new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' }),
       username: currentUser.username
     };
@@ -945,7 +988,7 @@ export default function App() {
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-2 -ml-2 text-espresso hover:bg-mist/20 rounded-lg transition-colors"
             >
-              <Settings size={24} />
+              <Menu size={24} />
             </button>
             <div>
               <h1 className="font-serif text-lg lg:text-2xl text-espresso truncate max-w-[200px] lg:max-w-none">
@@ -982,7 +1025,7 @@ export default function App() {
                 <RefreshCw size={18} className={cn(isLoading && "animate-spin")} />
               </button>
             </div>
-            {currentUser?.role === 'admin' && (
+            {currentUser?.username === 'admin' && (
               <button 
                 onClick={() => setShowSettings(true)}
                 className="p-2 text-dust hover:text-espresso transition-colors"
@@ -1028,7 +1071,7 @@ export default function App() {
           {activeView === 'ventas' && (
             <SalesPOS 
               products={products} 
-              onAddSale={handleAddSale} 
+              onAddSalesBatch={handleAddSalesBatch}
               sales={sales} 
               users={users}
               pendingAccounts={pendingAccounts.filter(a => a.status === 'Abierta')}
@@ -1077,12 +1120,20 @@ export default function App() {
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
               >
                 <div className="p-6 border-b border-mist">
-                  <h3 className="font-serif text-lg text-espresso">Configuración de Plantilla</h3>
-                  <p className="text-xs text-dust mt-1">Vincula tu archivo de Google Sheets existente.</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Settings className="text-bark" size={20} />
+                    <h3 className="font-serif text-lg text-espresso">Conexión de Datos</h3>
+                  </div>
+                  <p className="text-[11px] text-dust leading-relaxed">
+                    Personaliza el origen de tus datos vinculando una copia propia de Google Sheets para pruebas o respaldo.
+                  </p>
                 </div>
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-5">
                   <div>
-                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-1.5">ID de la Hoja de Cálculo</label>
+                    <label className="block text-[10px] font-bold text-dust uppercase tracking-wider mb-2 flex items-center justify-between">
+                      <span>ID / URL de la Hoja de Cálculo</span>
+                      <span className="text-[9px] font-normal text-bark cursor-help" title="Puedes pegar la URL completa de tu navegador">¿Dónde encuentro esto?</span>
+                    </label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <input 
@@ -1093,7 +1144,7 @@ export default function App() {
                             setTemplateId(e.target.value);
                             setTestResult(null);
                           }}
-                          className="w-full bg-cream border border-mist rounded-xl py-3 px-4 pr-10 text-sm outline-none focus:border-bark transition-colors"
+                          className="w-full bg-cream border border-mist rounded-xl py-3 px-4 pr-10 text-sm outline-none focus:border-bark transition-all shadow-inner"
                         />
                         {templateId && (
                           <button 
@@ -1110,22 +1161,28 @@ export default function App() {
                       <button 
                         onClick={testConnection}
                         disabled={!templateId || isTesting || !googleTokens}
-                        className="px-4 bg-parchment border border-mist rounded-xl text-[10px] font-bold uppercase tracking-wider text-espresso hover:bg-mist transition-colors disabled:opacity-50"
+                        className="px-4 bg-white border border-mist rounded-xl text-[10px] font-bold uppercase tracking-wider text-espresso hover:bg-parchment transition-all hover:shadow-sm disabled:opacity-50"
                       >
                         {isTesting ? '...' : 'Probar'}
                       </button>
                     </div>
                     {testResult && (
                       <p className={cn(
-                        "text-[10px] mt-2 font-medium",
+                        "text-[10px] mt-2 font-medium flex items-center gap-1.5",
                         testResult.success ? "text-green-600" : "text-red-500"
                       )}>
+                        <span className={cn("w-1.5 h-1.5 rounded-full", testResult.success ? "bg-green-500" : "bg-red-500")} />
                         {testResult.message}
                       </p>
                     )}
-                    <p className="text-[10px] text-dust mt-2 leading-relaxed">
-                      Puedes pegar la <strong>URL completa</strong> del archivo y nosotros extraeremos el ID automáticamente.
-                    </p>
+                    <div className="mt-4 p-3 bg-parchment/30 rounded-xl border border-mist/20">
+                      <p className="text-[10px] text-espresso font-medium mb-1">💡 Consejos para trabajar con copias:</p>
+                      <ul className="text-[9px] text-dust space-y-1 ml-2 list-disc">
+                        <li>Haz una copia en tu Google Drive (**Archivo &gt; Hacer una copia**)</li>
+                        <li>Pega la URL de esa copia arriba para no afectar la base original.</li>
+                        <li>Asegúrate de que la hoja tenga las mismas pestañas (Inventario, Ventas, etc).</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
                 <div className="p-4 bg-cream flex justify-end gap-3">

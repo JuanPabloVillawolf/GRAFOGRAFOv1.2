@@ -224,7 +224,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
       .sort((a, b) => parseESDate(b.timestamp).getTime() - parseESDate(a.timestamp).getTime());
     const te = expenses.filter(e => isSameDay(e.timestamp, todayMX));
     
-    const income = ts.reduce((acc, sale) => acc + sale.amount, 0);
+    const income = ts.reduce((acc, sale) => acc + sale.amount + (sale.amount2 || 0) + (sale.amount3 || 0), 0);
     const outflow = te.reduce((acc, exp) => acc + exp.amount, 0);
     const balance = income - outflow;
     
@@ -233,39 +233,53 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
 
     // Payment methods breakdown
     const methods = ts.reduce((acc, sale) => {
-      const methodStr = sale.paymentMethod || 'Efectivo';
-      
-      if (methodStr.includes(' + ') && methodStr.includes(':')) {
-        const parts = methodStr.split(' + ');
-        let totalInString = 0;
-        const parsedParts = parts.map(part => {
-          const colonIndex = part.indexOf(':');
-          if (colonIndex !== -1) {
-            const method = part.substring(0, colonIndex).trim();
-            const amountStr = part.substring(colonIndex + 1).trim();
-            const amount = parseAmount(amountStr);
-            totalInString += amount;
-            return { method, amount };
-          }
-          return { method: part.trim(), amount: 0 };
-        });
-
-        parsedParts.forEach(part => {
-          const proportion = totalInString > 0 ? part.amount / totalInString : 0;
-          const distributedAmount = sale.amount * proportion;
-          const normalizedMethod = normalizeMethod(part.method);
-          acc[normalizedMethod] = (acc[normalizedMethod] || 0) + distributedAmount;
-        });
-      } else {
-        let method = methodStr;
-        let amount = sale.amount;
-        if (methodStr.includes(':')) {
-          const colonIndex = methodStr.indexOf(':');
-          method = methodStr.substring(0, colonIndex).trim();
-        }
-        const normalizedMethod = normalizeMethod(method);
-        acc[normalizedMethod] = (acc[normalizedMethod] || 0) + amount;
+      // 1. Process explicit multi-payment fields
+      if (sale.paymentMethod) {
+        const m1 = normalizeMethod(sale.paymentMethod);
+        acc[m1] = (acc[m1] || 0) + sale.amount;
       }
+      if (sale.paymentMethod2 && sale.amount2) {
+        const m2 = normalizeMethod(sale.paymentMethod2);
+        acc[m2] = (acc[m2] || 0) + sale.amount2;
+      }
+      if (sale.paymentMethod3 && sale.amount3) {
+        const m3 = normalizeMethod(sale.paymentMethod3);
+        acc[m3] = (acc[m3] || 0) + sale.amount3;
+      }
+      
+      // 2. Legacy handling for combined strings (only if explicit payments aren't dominating/present in new format)
+      // Actually, to be safe with mixed data, if amount2/3 are 0, check if paymentMethod1 contains legacy format
+      if (!sale.amount2 && !sale.amount3 && sale.paymentMethod?.includes(':')) {
+        const methodStr = sale.paymentMethod;
+        if (methodStr.includes(' + ')) {
+          const parts = methodStr.split(' + ');
+          let totalInString = 0;
+          const parsedParts = parts.map(part => {
+            const colonIndex = part.indexOf(':');
+            if (colonIndex !== -1) {
+              const method = part.substring(0, colonIndex).trim();
+              const amountStr = part.substring(colonIndex + 1).trim();
+              const amount = parseAmount(amountStr);
+              totalInString += amount;
+              return { method, amount };
+            }
+            return { method: part.trim(), amount: 0 };
+          });
+
+          parsedParts.forEach(part => {
+            const proportion = totalInString > 0 ? part.amount / totalInString : 0;
+            const distributedAmount = sale.amount * proportion;
+            const normalizedMethod = normalizeMethod(part.method);
+            // Subtract the already added sale.amount to avoid double counting if it was partially parsed
+            // Actually, if it's legacy format, sale.amount is the TOTAL, and we already added it at line 238-ish.
+            // So we subtract it first.
+            acc[normalizeMethod(sale.paymentMethod.split(':')[0])] -= sale.amount; 
+            
+            acc[normalizedMethod] = (acc[normalizedMethod] || 0) + distributedAmount;
+          });
+        }
+      }
+      
       return acc;
     }, {} as Record<string, number>);
 
@@ -286,7 +300,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
 
       return {
         name: hour,
-        ventas: hourSales.reduce((acc, s) => acc + s.amount, 0),
+        ventas: hourSales.reduce((acc, s) => acc + s.amount + (s.amount2 || 0) + (s.amount3 || 0), 0),
         gastos: hourExpenses.reduce((acc, e) => acc + e.amount, 0),
         transacciones: hourSales.length,
       };
@@ -319,7 +333,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
 
       return {
         name: ds,
-        ventas: dayS.reduce((acc, s) => acc + s.amount, 0),
+        ventas: dayS.reduce((acc, s) => acc + s.amount + (s.amount2 || 0) + (s.amount3 || 0), 0),
         gastos: dayE.reduce((acc, e) => acc + e.amount, 0),
         transacciones: dayS.length,
       };
@@ -338,7 +352,7 @@ export function Dashboard({ sales, products, expenses, cashLogs }: DashboardProp
     // Category chart data
     const catData = [...new Set([...products.map(p => p.category), ...ts.map(s => s.category)])]
       .map(cat => {
-        const cSales = ts.filter(s => s.category === cat).reduce((acc, s) => acc + s.amount, 0);
+        const cSales = ts.filter(s => s.category === cat).reduce((acc, s) => acc + s.amount + (s.amount2 || 0) + (s.amount3 || 0), 0);
         return { name: cat, value: cSales };
       })
       .filter(item => item.value > 0)

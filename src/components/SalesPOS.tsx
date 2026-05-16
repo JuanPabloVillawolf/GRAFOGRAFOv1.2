@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Product, Sale, PendingAccount, Category } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { 
@@ -44,7 +44,19 @@ interface CartItem {
 
 interface SalesPOSProps {
   products: Product[];
-  onAddSale: (product: Product, quantity: number, paymentMethod: string, totalAmount?: number, customerName?: string, overrideUsername?: string, note?: string) => Promise<void>;
+  onAddSalesBatch: (items: { 
+    product: Product, 
+    quantity: number, 
+    paymentMethod: string, 
+    totalAmount?: number, 
+    customerName?: string, 
+    username?: string, 
+    note?: string,
+    paymentMethod2?: string,
+    amount2?: number,
+    paymentMethod3?: string,
+    amount3?: number
+  }[]) => Promise<void>;
   sales: Sale[];
   users: any[];
   pendingAccounts: PendingAccount[];
@@ -387,9 +399,17 @@ const getProductIcon = (iconName: string | undefined, category: string) => {
   return getCategoryStyle(category).icon;
 };
 
+const generateId = () => {
+  try {
+    return crypto.randomUUID();
+  } catch (e) {
+    return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+  }
+};
+
 export function SalesPOS({ 
   products, 
-  onAddSale, 
+  onAddSalesBatch,
   sales, 
   users,
   pendingAccounts, 
@@ -406,6 +426,8 @@ export function SalesPOS({
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+
+  const operationLockRef = useRef<boolean>(false);
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return [];
@@ -534,7 +556,6 @@ export function SalesPOS({
     if (posCart.length === 0) return;
 
     if (method === 'Pendiente') {
-      // We no longer block here, we'll ask in the modal
       setPendingCheckoutMethod('Pendiente');
       setShowUserSelection(true);
       return;
@@ -546,40 +567,37 @@ export function SalesPOS({
       return;
     }
 
-    // Default: Add the selected method with the remaining balance
-    const amount = remainingPaymentBalance > 0 ? remainingPaymentBalance : cartTotal;
-    setCurrentSalesPayments([{ method, amount }]);
-    setPaymentAmountInput(amount.toString());
+    // Initialize with the selected method covering the total
+    setCurrentSalesPayments([{ method, amount: cartTotal }]);
+    setPaymentAmountInput(cartTotal.toString());
     setShowUserSelection(true);
   };
 
-  const addPaymentMethod = (method: string) => {
-    if (remainingPaymentBalance <= 0) return;
-    const newPayments = [...currentSalesPayments, { method, amount: remainingPaymentBalance }];
-    setCurrentSalesPayments(newPayments);
-    setPaymentAmountInput(remainingPaymentBalance.toString());
+  const setPaymentMethodAmount = (method: string, amount: number) => {
+    setCurrentSalesPayments(prev => {
+      const existing = prev.find(p => p.method === method);
+      if (existing) {
+        if (amount <= 0) return prev.filter(p => p.method !== method);
+        return prev.map(p => p.method === method ? { ...p, amount } : p);
+      }
+      if (amount <= 0) return prev;
+      return [...prev, { method, amount }];
+    });
   };
 
-  const removePaymentMethod = (index: number) => {
-    const newPayments = [...currentSalesPayments];
-    newPayments.splice(index, 1);
-    setCurrentSalesPayments(newPayments);
-    if (newPayments.length > 0) {
-      setPaymentAmountInput(newPayments[newPayments.length-1].amount.toString());
-    }
-  };
-
-  const updatePaymentAmount = (index: number, val: string) => {
-    const amount = parseFloat(val) || 0;
-    const newPayments = [...currentSalesPayments];
-    newPayments[index].amount = amount;
-    setCurrentSalesPayments(newPayments);
-    setPaymentAmountInput(val);
+  const autoFillMethod = (method: string) => {
+    const currentPaid = currentSalesPayments
+      .filter(p => p.method !== method)
+      .reduce((sum, p) => sum + p.amount, 0);
+    const needed = Math.max(0, cartTotal - currentPaid);
+    setPaymentMethodAmount(method, parseFloat(needed.toFixed(2)));
   };
 
   const finalizeCheckout = async (selectedUsername: string) => {
-    if (posCart.length === 0 || isProcessing) return;
+    if (posCart.length === 0 || isProcessing || operationLockRef.current) return;
+    
     setIsProcessing(true);
+    operationLockRef.current = true;
 
     try {
       if (pendingCheckoutMethod === 'Pendiente') {
@@ -588,6 +606,7 @@ export function SalesPOS({
         if (!selectedAccountId && !finalCustomerName) {
           alert('Por favor, ingresa un nombre o referencia para la cuenta pendiente en el campo de "Nombre del Cliente".');
           setIsProcessing(false);
+          operationLockRef.current = false;
           return;
         }
 
@@ -596,41 +615,56 @@ export function SalesPOS({
           if (acc) finalCustomerName = acc.customerName;
         }
 
-        for (const item of posCart) {
-          await onAddSale(item.product, item.quantity, 'Pendiente', undefined, finalCustomerName, selectedUsername, posNote);
-        }
+        const batchItems = posCart.map(item => ({
+          product: item.product,
+          quantity: item.quantity,
+          paymentMethod: 'Pendiente' as const,
+          customerName: finalCustomerName,
+          username: selectedUsername,
+          note: posNote
+        }));
+
+        await onAddSalesBatch(batchItems);
       } else {
         const totalPaid = currentSalesPayments.reduce((sum, p) => sum + p.amount, 0);
-        if (Math.abs(totalPaid - cartTotal) > 0.01 && currentSalesPayments[0]?.method !== 'Gratis') {
+        if (Math.abs(totalPaid - cartTotal) > 0.01 && !currentSalesPayments.some(p => p.method === 'Gratis')) {
           alert('El monto total pagado debe coincidir con el total del carrito.');
           setIsProcessing(false);
+          operationLockRef.current = false;
           return;
         }
 
-        // Record each item split by each payment method
-        for (const item of posCart) {
+        const batchItems: any[] = [];
+        
+        posCart.forEach(item => {
           const itemTotal = item.product.price * item.quantity;
           
-          for (let pIdx = 0; pIdx < currentSalesPayments.length; pIdx++) {
-            const payment = currentSalesPayments[pIdx];
-            // Calculate the portion of this item's price covered by this payment
-            // If 'Gratis', amount is always 0
-            const portion = payment.method === 'Gratis' ? 0 : (payment.amount / cartTotal) * itemTotal;
-            
-            // Inventory is deducted only for the FIRST row of this item in this sale
-            const qtyToRecord = pIdx === 0 ? item.quantity : 0;
-            
-            await onAddSale(
-              item.product, 
-              qtyToRecord, 
-              payment.method, 
-              portion, 
-              posCustomerName.trim(), 
-              selectedUsername,
-              posNote
-            );
+          const batchItem: any = {
+            product: item.product,
+            quantity: item.quantity,
+            customerName: posCustomerName.trim(),
+            username: selectedUsername,
+            note: posNote,
+            // First payment
+            paymentMethod: currentSalesPayments[0]?.method || "Efectivo",
+            totalAmount: currentSalesPayments[0] 
+              ? (currentSalesPayments[0].method === 'Gratis' ? 0 : (currentSalesPayments[0].amount / cartTotal) * itemTotal)
+              : itemTotal
+          };
+
+          if (currentSalesPayments[1]) {
+            batchItem.paymentMethod2 = currentSalesPayments[1].method;
+            batchItem.amount2 = currentSalesPayments[1].method === 'Gratis' ? 0 : (currentSalesPayments[1].amount / cartTotal) * itemTotal;
           }
-        }
+          if (currentSalesPayments[2]) {
+            batchItem.paymentMethod3 = currentSalesPayments[2].method;
+            batchItem.amount3 = currentSalesPayments[2].method === 'Gratis' ? 0 : (currentSalesPayments[2].amount / cartTotal) * itemTotal;
+          }
+
+          batchItems.push(batchItem);
+        });
+
+        await onAddSalesBatch(batchItems);
       }
 
       setPosCart([]);
@@ -645,6 +679,7 @@ export function SalesPOS({
       alert('Error al procesar la venta. Por favor intenta de nuevo.');
     } finally {
       setIsProcessing(false);
+      operationLockRef.current = false;
     }
   };
 
@@ -652,7 +687,7 @@ export function SalesPOS({
     if (!customItem.name || customItem.price <= 0) return;
     
     const tempProduct: Product = {
-      id: 'custom-' + Date.now(),
+      id: 'custom-' + generateId(),
       name: customItem.name,
       category: customItem.category || 'Otros',
       price: customItem.price,
@@ -1257,49 +1292,74 @@ export function SalesPOS({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-2">Métodos de Pago</div>
-                      <div className="space-y-2">
-                        {currentSalesPayments.map((p, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-cream/40 p-2 rounded-xl border border-mist/30">
-                            <div className="flex-1">
-                              <div className="text-[10px] font-bold text-dust ml-1 mb-1">{p.method}</div>
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="text-[10px] font-bold text-dust uppercase tracking-widest">Métodos de Pago</div>
+                        <button 
+                          onClick={() => setCurrentSalesPayments([])}
+                          className="text-[9px] text-bark hover:underline font-bold"
+                        >
+                          Limpiar todo
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {['Efectivo', 'Tarjeta', 'Transferencia'].map((m) => {
+                          const payment = currentSalesPayments.find(p => p.method === m);
+                          const Icon = m === 'Efectivo' ? Wallet : m === 'Tarjeta' ? CreditCard : Landmark;
+                          
+                          return (
+                            <div key={m} className={cn(
+                              "relative group p-3 rounded-2xl border transition-all",
+                              payment ? "bg-cream/40 border-gold shadow-sm" : "bg-white border-mist/20 hover:border-mist"
+                            )}>
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                                  payment ? "bg-gold text-espresso" : "bg-parchment/30 text-dust"
+                                )}>
+                                  <Icon size={16} />
+                                </div>
+                                <span className={cn("text-xs font-bold", payment ? "text-espresso" : "text-dust")}>{m}</span>
+                                
+                                {remainingPaymentBalance > 0 && (
+                                  <button 
+                                    onClick={() => autoFillMethod(m)}
+                                    className="ml-auto text-[9px] font-bold text-bark bg-bark/5 px-2 py-1 rounded-lg hover:bg-bark hover:text-white transition-all uppercase tracking-wider"
+                                  >
+                                    Cubrir Restante
+                                  </button>
+                                )}
+                              </div>
+                              
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-dust">$</span>
+                                <span className={cn(
+                                  "absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold",
+                                  payment ? "text-espresso" : "text-mist"
+                                )}>$</span>
                                 <input 
                                   type="number"
-                                  value={p.amount}
-                                  onChange={(e) => updatePaymentAmount(idx, e.target.value)}
-                                  className="w-full bg-white border border-mist rounded-lg py-1.5 pl-6 pr-3 text-sm font-bold text-espresso outline-none focus:border-gold"
+                                  value={payment?.amount ?? ''}
+                                  onChange={(e) => setPaymentMethodAmount(m, parseFloat(e.target.value) || 0)}
+                                  placeholder="0.00"
+                                  className={cn(
+                                    "w-full bg-white border rounded-xl py-2 pl-7 pr-4 text-sm font-bold outline-none transition-all",
+                                    payment ? "border-gold text-espresso" : "border-mist/30 text-dust focus:border-mist"
+                                  )}
                                 />
                               </div>
                             </div>
-                            <button 
-                              onClick={() => removePaymentMethod(idx)}
-                              className="p-2 text-red-300 hover:text-red-500 transition-colors mt-4"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
-                      {remainingPaymentBalance > 0 && (
-                        <div className="pt-2 border-t border-mist/50">
-                          <div className="text-[10px] font-bold text-dust uppercase tracking-widest mb-3">Agregar otro método</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {['Efectivo', 'Tarjeta', 'Transferencia'].map(m => (
-                              <button
-                                key={m}
-                                onClick={() => addPaymentMethod(m)}
-                                className="py-2 px-1 bg-white border border-mist/50 rounded-xl text-[10px] font-bold text-dust hover:border-gold hover:text-espresso transition-all flex flex-col items-center gap-1"
-                              >
-                                {m === 'Efectivo' && <Wallet size={14} />}
-                                {m === 'Tarjeta' && <CreditCard size={14} />}
-                                {m === 'Transferencia' && <Landmark size={14} />}
-                                {m}
-                              </button>
-                            ))}
-                          </div>
+                      {currentSalesPayments.some(p => !['Efectivo', 'Tarjeta', 'Transferencia', 'Gratis'].includes(p.method)) && (
+                        <div className="pt-2">
+                           {currentSalesPayments.filter(p => !['Efectivo', 'Tarjeta', 'Transferencia', 'Gratis'].includes(p.method)).map((p, idx) => (
+                             <div key={idx} className="flex items-center justify-between p-2 bg-terra/5 border border-terra/20 rounded-xl">
+                               <span className="text-xs font-bold text-terra">{p.method}</span>
+                               <span className="text-xs font-bold text-terra">{formatCurrency(p.amount)}</span>
+                             </div>
+                           ))}
                         </div>
                       )}
                     </div>

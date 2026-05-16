@@ -67,8 +67,11 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
   const todayExpenses = expenses.filter(e => isSameDay(e.timestamp, reportDate));
   const todayCashLogs = cashLogs.filter(log => isSameDay(log.timestamp, reportDate));
 
+  const saleAmount2 = (s: Sale) => s.amount2 || 0;
+  const saleAmount3 = (s: Sale) => s.amount3 || 0;
+
   // --- CALCULATIONS ---
-  const totalSales = todaySales.reduce((acc, s) => acc + s.amount, 0);
+  const totalSales = todaySales.reduce((acc, s) => acc + s.amount + (saleAmount2(s)) + (saleAmount3(s)), 0);
   const totalExpenses = todayExpenses.reduce((acc, e) => acc + e.amount, 0);
   const initialFund = todayCashLogs
     .filter(log => log.type === 'Fondo Inicial')
@@ -124,43 +127,47 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
 
   const paymentBreakdown: Record<string, number> = {};
   todaySales.forEach(sale => {
-    const methodStr = sale.paymentMethod || 'Efectivo';
-    
-    // Check if it's a split payment string: "Method: $120.00 + Method: $30.00"
-    if (methodStr.includes(' + ') && methodStr.includes(':')) {
-      const parts = methodStr.split(' + ');
-      
-      // Calculate total in the string to get proportions
-      let totalInString = 0;
-      const parsedParts = parts.map(part => {
-        const colonIndex = part.indexOf(':');
-        if (colonIndex !== -1) {
-          const method = part.substring(0, colonIndex).trim();
-          const amountStr = part.substring(colonIndex + 1).trim();
-          const amount = parseAmount(amountStr);
-          totalInString += amount;
-          return { method, amount };
-        }
-        return { method: part.trim(), amount: 0 };
-      });
-
-      // Distribute sale.amount based on proportions
-      parsedParts.forEach(part => {
-        const proportion = totalInString > 0 ? part.amount / totalInString : 0;
-        const distributedAmount = sale.amount * proportion;
-        const normalized = normalizeMethod(part.method);
-        paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + distributedAmount;
-      });
-    } else {
-      // Single method, but might have ": $amount" suffix
-      let method = methodStr;
-      if (methodStr.includes(':')) {
-        const colonIndex = methodStr.indexOf(':');
-        method = methodStr.substring(0, colonIndex).trim();
-      }
-
-      const normalized = normalizeMethod(method);
+    // 1. Process explicit multi-payment fields
+    if (sale.paymentMethod) {
+      const normalized = normalizeMethod(sale.paymentMethod);
       paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + sale.amount;
+    }
+    if (sale.paymentMethod2 && sale.amount2) {
+      const normalized = normalizeMethod(sale.paymentMethod2);
+      paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + sale.amount2;
+    }
+    if (sale.paymentMethod3 && sale.amount3) {
+      const normalized = normalizeMethod(sale.paymentMethod3);
+      paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + sale.amount3;
+    }
+
+    // 2. Legacy handling for combined strings
+    if (!sale.amount2 && !sale.amount3 && sale.paymentMethod?.includes(':')) {
+      const methodStr = sale.paymentMethod;
+      if (methodStr.includes(' + ')) {
+        const parts = methodStr.split(' + ');
+        let totalInString = 0;
+        const parsedParts = parts.map(part => {
+          const colonIndex = part.indexOf(':');
+          if (colonIndex !== -1) {
+            const method = part.substring(0, colonIndex).trim();
+            const amountStr = part.substring(colonIndex + 1).trim();
+            const amount = parseAmount(amountStr);
+            totalInString += amount;
+            return { method, amount };
+          }
+          return { method: part.trim(), amount: 0 };
+        });
+
+        parsedParts.forEach(part => {
+          const proportion = totalInString > 0 ? part.amount / totalInString : 0;
+          const distributedAmount = sale.amount * proportion;
+          const normalized = normalizeMethod(part.method);
+          // Adjust double counting
+          paymentBreakdown[normalizeMethod(sale.paymentMethod.split(':')[0])] -= sale.amount;
+          paymentBreakdown[normalized] = (paymentBreakdown[normalized] || 0) + distributedAmount;
+        });
+      }
     }
   });
 
@@ -196,7 +203,7 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
   
   categories.forEach(cat => {
     const catSales = todaySales.filter(s => s.category === cat);
-    const catTotal = catSales.reduce((sum, s) => sum + s.amount, 0);
+    const catTotal = catSales.reduce((sum, s) => sum + s.amount + (s.amount2 || 0) + (s.amount3 || 0), 0);
     
     categoryData.push([
       { content: cat, styles: { fontStyle: 'bold', fillColor: [245, 245, 240] } },
@@ -207,7 +214,7 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
     catSales.forEach(s => {
       if (!productMap[s.productName]) productMap[s.productName] = { qty: 0, total: 0 };
       productMap[s.productName].qty += s.quantity;
-      productMap[s.productName].total += s.amount;
+      productMap[s.productName].total += s.amount + (s.amount2 || 0) + (s.amount3 || 0);
     });
     
     Object.entries(productMap).forEach(([name, data]) => {
@@ -244,7 +251,7 @@ export const generateDailyReport = (sales: Sale[], expenses: Expense[], cashLogs
       concept: s.productName,
       category: s.category,
       user: s.username || '---',
-      amount: s.amount,
+      amount: s.amount + (s.amount2 || 0) + (s.amount3 || 0),
       color: [21, 128, 61]
     })),
     ...todayExpenses.map(e => ({

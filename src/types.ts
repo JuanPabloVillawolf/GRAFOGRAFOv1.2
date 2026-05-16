@@ -17,6 +17,10 @@ export interface Sale {
   amount: number;
   quantity: number;
   paymentMethod: string;
+  paymentMethod2?: string;
+  amount2?: number;
+  paymentMethod3?: string;
+  amount3?: number;
   username: string;
   note?: string;
 }
