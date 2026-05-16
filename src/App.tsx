@@ -393,7 +393,7 @@ export default function App() {
     try {
       const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
       const batchSales: Sale[] = [];
-      const accountsToSync: PendingAccount[] = [];
+      let accountsToSync: PendingAccount[] = [];
       let pendingUpdateNeeded = false;
 
       // Prepare data
@@ -440,7 +440,7 @@ export default function App() {
                 };
                 newPrev = [newAcc, ...prev];
               }
-              accountsToSync.push(...newPrev);
+              accountsToSync = newPrev;
               resolve();
               return newPrev;
             });
@@ -610,10 +610,21 @@ export default function App() {
           setActivePendingAccount(null);
         }
 
-        const allPayments = [
+        const rawPayments = [
           ...(account.payments || []).map(p => ({ method: p.method, amount: p.amount })),
           ...sessionPayments
         ];
+
+        // Group payments by method to optimize the 3 available slots
+        const groupedPaymentsMap = rawPayments.reduce((acc, p) => {
+          const m = p.method || "Efectivo";
+          acc[m] = (acc[m] || 0) + p.amount;
+          return acc;
+        }, {} as Record<string, number>);
+
+        const allPayments = Object.entries(groupedPaymentsMap)
+          .map(([method, amount]) => ({ method, amount }))
+          .sort((a, b) => b.amount - a.amount); // High amount first
         
         const actualTotalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
         const batchSales: Sale[] = [];
@@ -645,6 +656,13 @@ export default function App() {
           if (allPayments[2]) {
             sale.paymentMethod3 = allPayments[2].method;
             sale.amount3 = (allPayments[2].amount / actualTotalPaid) * itemTotal;
+          }
+
+          // If there are more than 3 methods, distribute the rest of the total into the 3rd slot 
+          // to ensure the row's total matches the item total
+          if (allPayments.length > 3) {
+             const remainingProportion = allPayments.slice(3).reduce((acc, p) => acc + p.amount, 0) / actualTotalPaid;
+             sale.amount3 = (sale.amount3 || 0) + (remainingProportion * itemTotal);
           }
 
           batchSales.push(sale);
