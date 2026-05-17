@@ -308,6 +308,10 @@ const oauth2Client = new google.auth.OAuth2(
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
       const now = new Date().toLocaleString('es-MX', { hour12: false, timeZone: 'America/Tijuana' });
 
+      // Append is usually specific enough that we don't need a strict ID check here 
+      // as initial cash funds are usually one-off, but it's good practice.
+      // For now, let's just make it robust.
+      
       await sheets.spreadsheets.values.append({
         spreadsheetId,
         range: "Caja!A1",
@@ -333,6 +337,23 @@ const oauth2Client = new google.auth.OAuth2(
     try {
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // IDEMPOTENCY CHECK
+      try {
+        const checkRes = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "Gastos!A2:A",
+        });
+        if (checkRes.data.values) {
+          const existingIds = new Set(checkRes.data.values.map(row => row[0]));
+          if (existingIds.has(expense.id)) {
+            console.log(`Expense ID ${expense.id} already exists, skipping duplicate.`);
+            return res.json({ success: true, message: "Expense already recorded" });
+          }
+        }
+      } catch (e) {
+        // No problem if sheet is empty or error
+      }
 
       await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -367,6 +388,23 @@ const oauth2Client = new google.auth.OAuth2(
     try {
       oauth2Client.setCredentials(tokens);
       const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+      // IDEMPOTENCY CHECK
+      try {
+        const checkRes = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "Ventas!A2:A",
+        });
+        if (checkRes.data.values) {
+          const existingIds = new Set(checkRes.data.values.map(row => row[0]));
+          if (existingIds.has(sale.id)) {
+            console.log(`Sale ID ${sale.id} already exists, skipping duplicate.`);
+            return res.json({ success: true, message: "Sale already recorded" });
+          }
+        }
+      } catch (e) {
+        console.log("No existing sales found or error checking for duplicates");
+      }
 
       const a1 = parseFloat(sale.amount) || 0;
       const a2 = parseFloat(sale.amount2) || 0;
